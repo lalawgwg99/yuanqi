@@ -524,14 +524,41 @@ const HTML = `<!DOCTYPE html>
       }, 70);
     }, 4000 + Math.random() * 5000);
   }
+  var weatherTimer = null;
+  function clearFx(){ setRain(0); setFire(0); setSpiders(0); }
+  function fireWeatherEvent(){
+    var lv = level();
+    if (lv <= 0 || reduceMotion) return;
+    var pool = ['drizzle'];
+    if (lv >= 2) pool.push('rain');
+    if (lv >= 3) pool.push('ember');
+    if (lv >= 4) pool.push('spiders');
+    if (lv >= 5) pool.push('storm');
+    if (lv >= 6) pool.push('hellfire');
+    var ev = pool[Math.floor(Math.random() * pool.length)];
+    if (ev === 'drizzle') setRain(8);
+    else if (ev === 'rain') setRain(18);
+    else if (ev === 'storm') setRain(40);
+    else if (ev === 'ember') setFire(10);
+    else if (ev === 'hellfire') setFire(20);
+    else if (ev === 'spiders') setSpiders(4);
+    setTimeout(function(){ setRain(0); setFire(0); setSpiders(0); }, 5000 + Math.random() * 6000);
+  }
+  function scheduleWeather(){
+    clearTimeout(weatherTimer);
+    if (reduceMotion) return;
+    weatherTimer = setTimeout(function(){
+      if (!document.hidden) fireWeatherEvent();
+      scheduleWeather();
+    }, 7000 + Math.random() * 8000);
+  }
   var curFxLv = -1;
   function setFx(lv){
-    if (reduceMotion || lv === curFxLv) return;
+    if (reduceMotion) { clearFx(); curFxLv = lv; return; }
+    if (lv === curFxLv) return;
     curFxLv = lv;
-    setRain(lv === 0 ? 0 : (lv === 1 ? 8 : (lv === 2 ? 18 : (lv >= 5 ? 40 : 28))));
-    setFire(lv >= 6 ? 24 : (lv >= 4 ? 16 : (lv >= 3 ? 10 : 0)));
-    setSpiders(lv >= 6 ? 6 : (lv >= 4 ? 4 : 0));
-    scheduleFlash();
+    clearFx();
+    scheduleWeather();
   }
 
   /* 惡魔品嚐：AI 自動判定怨氣分數（厚黑學惡魔廠長） */
@@ -1320,6 +1347,7 @@ const HTML = `<!DOCTYPE html>
   loadState();
   loadWeather();
   setInterval(pollState, 20000);
+  scheduleFlash();
 })();
 </script>
 </body>
