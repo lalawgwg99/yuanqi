@@ -156,7 +156,7 @@
     font-size: 15px; padding: 3px 10px; will-change: transform;
     animation-name: fly; animation-timing-function: linear; animation-fill-mode: forwards;
   }
-  @keyframes fly { from { transform: translateX(100vw); } to { transform: translateX(-130%); } }
+  @keyframes fly { from { transform: translateX(0); } to { transform: translateX(var(--fly-to, -110vw)); } }
   #king { border-width: 4px; }
   #fx { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
   .drop { position: absolute; top: -20px; width: 2px; height: 14px; background: var(--fg); animation: fall linear infinite; }
@@ -456,16 +456,21 @@
     setFx(lv);
   }
 
-  /* 天氣系統：惡魔的背景隨等級加碼 */
+  /* 天氣系統：隨機陣發。桌面寬螢幕時收斂到內容欄內 */
+  function colGeom(){
+    var w = Math.min(480, window.innerWidth);
+    return { w: w, l: (window.innerWidth - w) / 2 };
+  }
   var fxLayer = document.getElementById('fx');
   var rainDrops = [];
   function setRain(n){
     if (lowEnd) n = Math.ceil(n / 2);
+    var g = colGeom();
     while (rainDrops.length > n) rainDrops.pop().remove();
     while (rainDrops.length < n) {
       var d = document.createElement('div');
       d.className = 'drop';
-      d.style.left = (Math.random() * 100) + 'vw';
+      d.style.left = (g.l + Math.random() * g.w) + 'px';
       d.style.animationDuration = (0.6 + Math.random() * 0.7) + 's';
       d.style.animationDelay = (Math.random() * 1) + 's';
       fxLayer.appendChild(d);
@@ -489,22 +494,24 @@
   var spiderSVG = '<svg viewBox="0 0 30 30" width="26" height="26"><ellipse cx="15" cy="16" rx="6" ry="8" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9,10 L2,4 M9,14 L1,12 M9,18 L2,22 M9,22 L4,28"/><path d="M21,10 L28,4 M21,14 L29,12 M21,18 L28,22 M21,22 L26,28"/></g></svg>';
   function setSpiders(n){
     if (lowEnd) return;
+    var g0 = colGeom();
     while (spiders.length > n) spiders.pop().el.remove();
     while (spiders.length < n) {
       var el = document.createElement('div');
       el.className = 'spider';
       el.innerHTML = spiderSVG;
       document.body.appendChild(el);
-      spiders.push({ el: el, x: Math.random() * (window.innerWidth - 30), y: Math.random() * (window.innerHeight - 30),
+      spiders.push({ el: el, x: g0.l + Math.random() * (g0.w - 30), y: Math.random() * (window.innerHeight - 30),
                      vx: (Math.random() - 0.5) * 16, vy: (Math.random() - 0.5) * 16 });
     }
   }
   setInterval(function(){
     if (reduceMotion || document.hidden) return;
+    var g = colGeom();
     for (var si = 0; si < spiders.length; si++) {
       var sp = spiders[si];
       sp.x += sp.vx; sp.y += sp.vy;
-      if (sp.x < 0 || sp.x > window.innerWidth - 28) sp.vx *= -1;
+      if (sp.x < g.l || sp.x > g.l + g.w - 28) sp.vx *= -1;
       if (sp.y < 0 || sp.y > window.innerHeight - 28) sp.vy *= -1;
       sp.el.style.left = sp.x + 'px';
       sp.el.style.top = sp.y + 'px';
@@ -1144,6 +1151,9 @@
       document.getElementById('full-layer').style.display = 'flex';
     });
     d.style.top = (4 + Math.random() * 76) + '%';
+    var gg = colGeom();
+    d.style.left = (gg.l + gg.w) + 'px';
+    d.style.setProperty('--fly-to', '-' + (gg.w + 620) + 'px');
     d.style.animationDuration = (8 + Math.random() * 7) + 's';
     d.addEventListener('animationend', function(){ d.remove(); });
     danLayer.appendChild(d);
