@@ -303,11 +303,11 @@ const HTML = `<!DOCTYPE html>
     rmHint: '※ Your device has "Reduce Motion" on — danmaku and effects are disabled by the system. Turn it off in settings to see them.',
     rejected: 'Rejected today: ', rejectUnit: ' positivity posts', stamp: 'REJECTED',
     scoreLine: function(s){ return ['Demon verdict: resentment ' + s + '/100. ', ' (+' + s + ')']; },
-    redline: '……cough. The demon eats resentment, not lives. I can\'t take this one — please contact a local crisis helpline right now.',
+    redline: '……cough. The demon eats resentment, not lives. I can\\'t take this one — please contact a local crisis helpline right now.',
     sponsor: 'Donate', sponsorTitle: 'Donate',
     sponsorBody: 'The Resentment Power Plant takes none of your money — the demon eats resentment, not cash. But if venting loosened the knot in your chest, consider giving the price of one drink to a stray animal waiting for a home. The button below takes you to a random stray-animal shelter. They need your kindness more than the demon does.',
     sponsorGo: 'Take me to donate →', close: 'Close',
-    sponsorNote: 'This site handles no money. Donations happen directly on each organization\'s website.',
+    sponsorNote: 'This site handles no money. Donations happen directly on each organization\\'s website.',
     footHot: 'In crisis? Please contact your local crisis helpline.',
     footLine2: 'Your resentment is my electricity. The demon eats resentment, not lives.',
     footPrivacy: 'No login・No tracking・Nickname lives only in your browser・This site has no database',
@@ -320,7 +320,7 @@ const HTML = `<!DOCTYPE html>
     stages: ['Angel', 'Wraith', 'Demon', 'Blood Demon', 'Twin Demon Lords', 'Three-Eyed Demon Lord', 'Primal Chaos Emperor'],
     stageLines: ['Tonight, the angel walks among us.', 'Sss… smells like resentment.', 'Tonight, it listens.', 'Not full yet. Curse more.', 'Hahaha! We have arrived!', 'Three eyes. All watching you curse.', 'I AM chaos. Kneel.'],
     evo: ' pts to evolve', maxed: ' · FINAL FORM', angelWake: ' (demon awakening)',
-    kingLine: function(n, s, x){ return '■ Today\'s Resentment Royalty: ' + n + ' (resentment ' + s + '/100)<br>"' + x + '"'; }
+    kingLine: function(n, s, x){ return '■ Today\\'s Resentment Royalty: ' + n + ' (resentment ' + s + '/100)<br>"' + x + '"'; }
   },
   'ja': {
     title: '怨気発電所', meter: '怨気値', ventPh: '今日のムカつきをぶちまけろ…（人を罵るな、事を罵れ／強さは悪魔が判定）',
@@ -543,7 +543,7 @@ const HTML = `<!DOCTYPE html>
     function(s){ return '罵得好，下次記得開大，本魔愛吃重的。'; }
   ],
   'en': [
-    function(s){ return 'That\'s it? Curse harder.'; },
+    function(s){ return 'That\\'s it? Curse harder.'; },
     function(s){ return 'Tasted. Mm, flavorful. The demon accepts.'; },
     function(s){ return 'Your enemy pulled a textbook thick-black move: "delay and deflect". You lost for reading too little.'; },
     function(s){ return 'Well cursed. Go bigger next time — the demon likes it heavy.'; }
@@ -573,10 +573,10 @@ const HTML = `<!DOCTYPE html>
   /* 真 AI：惡魔品嚐＋抱抱嘲諷，失敗自動降級回本地 */
   var AI_URL = 'https://ai.taicalc.com/api/ai';
   var RED_RE = /自殺|想死|死一死|結束一切|不想活|了結/;
-  var PII_RE = /(09\d{2}-?\d{3}-?\d{3}|[A-Z][12]\d{8})/;
+  var PII_RE = /(09\\d{2}-?\\d{3}-?\\d{3}|[A-Z][12]\\d{8})/;
   var PII_MSG = {
     'zh-TW': '想貼個資？本魔不吃這套。',
-    'en': 'Personal info? The demon doesn\'t eat that.',
+    'en': 'Personal info? The demon doesn\\'t eat that.',
     'ja': '個人情報？悪魔は食わん。',
     'ko': '개인정보? 악마는 안 먹어.'
   };
@@ -616,10 +616,10 @@ const HTML = `<!DOCTYPE html>
   'en': [
     'Hug my ass. Will a hug get you a raise?',
     'Aww, how wholesome — NOT. Done hugging? Back to overtime.',
-    'The demon rates this hug 3/10. Can\'t go higher.',
+    'The demon rates this hug 3/10. Can\\'t go higher.',
     'If hugs worked, why would we need a demon?',
     'A hug? Will your landlord lower the rent for that?',
-    'Alright, alright, one hug\'s enough. Stop acting in a drama.'
+    'Alright, alright, one hug\\'s enough. Stop acting in a drama.'
   ],
   'ja': [
     'ハグだと？ハグで給料上がるのか？',
@@ -668,9 +668,9 @@ const HTML = `<!DOCTYPE html>
     '這麼開心你來這幹嘛？去跟你朋友說啊。滾——（愛的推擠）'
   ],
   'en': [
-    'Pah, sweet. The demon doesn\'t do sugar. REJECTED! Positivity to the left, no need to see you out.',
+    'Pah, sweet. The demon doesn\\'t do sugar. REJECTED! Positivity to the left, no need to see you out.',
     'Zero resentment? Wrong venue. This is the Resentment Power Plant — take your gratitude elsewhere.',
-    'Your positivity is damaging the demon. Post that again and I\'m calling the cops.',
+    'Your positivity is damaging the demon. Post that again and I\\'m calling the cops.',
     'REJECTED! We take resentment here, not chicken soup for the soul.',
     'So happy? Go tell your friends. Scram — (with love)'
   ],
@@ -799,7 +799,7 @@ const HTML = `<!DOCTYPE html>
       line: { 'zh-TW': '點我幹嘛？本魔很忙，忙著吃。', 'en': 'Why poke me? The demon is busy. Busy eating.', 'ja': '何だ？悪魔は忙しい。食うのに忙しい。', 'ko': '왜 찔러? 악마는 바빠. 먹는다고 바빠.' } },
     { cls: 'shy', shake: false,
       burst: { 'zh-TW': '哎呀…', 'en': 'Oh my…', 'ja': 'あっ…', 'ko': '어머…' },
-      line: { 'zh-TW': '別點啦…人家會害羞…', 'en': 'Stop poking… I\'m shy…', 'ja': 'つつかないで…恥ずかしい…', 'ko': '찌르지 마… 부끄러워…' } }
+      line: { 'zh-TW': '別點啦…人家會害羞…', 'en': 'Stop poking… I\\'m shy…', 'ja': 'つつかないで…恥ずかしい…', 'ko': '찌르지 마… 부끄러워…' } }
   ];
 
   /* 贊助：隨機流浪動物之家（英文版走國際組織） */
@@ -1113,7 +1113,7 @@ const HTML = `<!DOCTYPE html>
     d.className = 'dan';
     d.textContent = name + '：' + (text.length > 26 ? text.slice(0, 26) + '…' : text);
     d.addEventListener('click', function(){
-      document.getElementById('full-text').textContent = name + '：\n' + text;
+      document.getElementById('full-text').textContent = name + '：\\n' + text;
       document.getElementById('full-layer').style.display = 'flex';
     });
     d.style.top = (4 + Math.random() * 76) + '%';
