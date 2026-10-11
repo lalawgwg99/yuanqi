@@ -330,7 +330,7 @@
       var o = JSON.parse(j.text);
       if (!o || typeof o.score !== 'number') throw 0;
       if (o.quip === '__REDLINE__') return { score: 0, red: true, quip: '' };
-      return { score: Math.max(0, Math.min(100, Math.round(o.score))), red: false, quip: String(o.quip || '') };
+      return { score: Math.max(0, Math.min(100, Math.round(o.score))), red: false, quip: String(o.quip || ''), reject: o.reject === true };
     }).catch(function(){ return localTaste(text); });
   }
   var tauntPool = [
@@ -386,7 +386,7 @@
       vent.value = '';
       if (taste.red) {
         dhint.textContent = '……咳。惡魔只吃怨氣，不吃人命。這題我不接——1925 有人 24 小時聽你說。';
-      } else if (taste.score < 35) {
+      } else if (taste.reject || taste.score < 20) {
         rejected++;
         dhint.textContent = rejectQuips[Math.floor(Math.random() * rejectQuips.length)];
         showRejectStamp();
@@ -407,7 +407,7 @@
         pz.insertBefore(mine, pz.firstChild);
       }
       render();
-      if (!taste.red && taste.score >= 35) {
+      if (!taste.red && !taste.reject && taste.score >= 20) {
         var cur = parseInt(blob.style.width, 10) || 0;
         blob.style.width = (cur + 24) + 'px';
         blob.style.height = (cur + 24) + 'px';

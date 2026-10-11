@@ -1,0 +1,507 @@
+const HTML = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>怨氣發電廠 v0.1</title>
+<style>
+  :root { --bg: #fff; --fg: #000; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Courier New", monospace;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 12px;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  body.angel { --bg: #000; --fg: #fff; }
+  hr { border: 0; border-top: 2px solid var(--fg); margin: 12px 0; }
+  .top { display: flex; justify-content: space-between; font-weight: bold; }
+  /* ---- meter ---- */
+  .meter-row { display: flex; align-items: baseline; gap: 12px; margin: 8px 0; }
+  .meter-num { font-size: 64px; font-weight: bold; line-height: 1; }
+  .meter-label { font-size: 12px; }
+  /* ---- blob ---- */
+  .blob-wrap { display: flex; justify-content: center; padding: 24px 0 8px; min-height: 220px; align-items: center; }
+  .demon {
+    color: var(--fg);
+    animation: jitter 0.9s steps(2) infinite;
+  }
+  .demon .halo { display: none; }
+  body.angel .demon .halo { display: block; }
+  body.angel .demon .horns { display: none; }
+  .demon.rage { color: #d00; animation-duration: 0.45s; }
+  .demon .spikes { display: none; }
+  .demon.rage .spikes { display: block; }
+  .demon.twin { display: none; margin-left: -24px; }
+  #hpbar { display: flex; gap: 2px; margin: 6px 0 2px; }
+  #hpbar span { flex: 1; height: 14px; border: 2px solid var(--fg); }
+  #hpbar span.fill { background: var(--fg); }
+  @keyframes jitter {
+    0%   { transform: translate(0,0) rotate(0deg); border-radius: 58% 42% 55% 45% / 48% 55% 45% 52%; }
+    50%  { transform: translate(3px,-2px) rotate(1.5deg); border-radius: 45% 55% 42% 58% / 55% 45% 58% 42%; }
+    100% { transform: translate(-2px,2px) rotate(-1deg); border-radius: 52% 48% 60% 40% / 42% 58% 45% 55%; }
+  }
+  .headline { text-align: center; font-size: 22px; font-weight: bold; margin: 4px 0 8px; }
+  /* ---- vent ---- */
+  textarea {
+    width: 100%; min-height: 90px;
+    border: 2px solid var(--fg);
+    background: var(--bg); color: var(--fg);
+    font: inherit; padding: 8px; resize: vertical;
+  }
+  .btn-big {
+    display: block; width: 100%;
+    background: var(--fg); color: var(--bg);
+    border: 2px solid var(--fg);
+    font: inherit; font-weight: bold; font-size: 18px;
+    padding: 12px; cursor: pointer;
+  }
+  .btn-big:active { background: var(--bg); color: var(--fg); }
+  .btn-big:disabled { background: var(--bg); color: var(--fg); border-style: dashed; cursor: wait; }
+  .hint { font-size: 12px; margin-top: 4px; }
+  /* ---- plaza ---- */
+  .card { border: 2px solid var(--fg); padding: 8px; margin: 8px 0; }
+  .card .meta { font-size: 12px; }
+  .btn-hug {
+    border: 2px solid var(--fg); background: var(--bg); color: var(--fg);
+    font: inherit; padding: 4px 12px; cursor: pointer;
+  }
+  .btn-hug:active { background: var(--fg); color: var(--bg); }
+  .hug-count { font-weight: bold; }
+  .stamp {
+    position: fixed; left: 50%; top: 42%; z-index: 90;
+    transform: translate(-50%, -50%) rotate(-12deg);
+    font-size: 72px; font-weight: bold; letter-spacing: 8px;
+    border: 8px solid var(--fg); padding: 4px 24px;
+    background: var(--bg); color: var(--fg); pointer-events: none;
+    animation: stamp-in .22s steps(2);
+  }
+  @keyframes stamp-in { from { transform: translate(-50%,-50%) rotate(-12deg) scale(2.4); } to { transform: translate(-50%,-50%) rotate(-12deg) scale(1); } }
+  @media (prefers-reduced-motion: reduce) { .stamp { animation: none; } }
+  .flash { background: var(--fg); color: var(--bg); }
+  #danmaku { position: fixed; top: 0; left: 0; width: 100%; height: 42%; pointer-events: none; overflow: hidden; z-index: 60; }
+  .dan {
+    position: absolute; left: 0; white-space: nowrap;
+    border: 2px solid var(--fg); background: var(--bg); color: var(--fg);
+    font-size: 15px; padding: 3px 10px; will-change: transform;
+    animation-name: fly; animation-timing-function: linear; animation-fill-mode: forwards;
+  }
+  @keyframes fly { from { transform: translateX(100vw); } to { transform: translateX(-130%); } }
+  #king { border-width: 4px; }
+  #fx { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
+  .drop { position: absolute; top: -20px; width: 2px; height: 14px; background: var(--fg); animation: fall linear infinite; }
+  @keyframes fall { to { transform: translateY(112vh); } }
+  #flash { position: fixed; inset: 0; background: var(--fg); opacity: 0; pointer-events: none; z-index: 55; }
+  #fire { position: fixed; left: 0; right: 0; bottom: 0; text-align: center; pointer-events: none; z-index: -1; line-height: 1; }
+  .flame { display: inline-block; color: var(--fg); animation: flick 0.4s steps(2) infinite; margin: 0 2px; }
+  @keyframes flick { 0% { transform: scaleY(1); } 50% { transform: scaleY(1.5); } 100% { transform: scaleY(0.7); } }
+  .spider { position: fixed; color: var(--fg); pointer-events: none; z-index: 46; }
+  footer { font-size: 12px; }
+  footer .hotline { font-weight: bold; font-size: 14px; }
+  @media (prefers-reduced-motion: reduce) {
+    #blob { animation: none; }
+    #danmaku { display: none; }
+    #fx, #flash, #fire, .spider { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="top"><span>怨氣發電廠</span></div>
+<hr>
+
+<div id="danmaku" aria-hidden="true"></div>
+<div id="fx" aria-hidden="true"></div>
+<div id="flash" aria-hidden="true"></div>
+<div id="fire" aria-hidden="true"></div>
+<div class="hint" id="rm-hint" style="display:none">※ 偵測到你的手機開了「減少動態效果」，彈幕和抖動被系統關掉了。去設定關掉就能看。</div>
+<div class="meter-row">
+  <div class="meter-num" id="num">62</div>
+  <div class="meter-label">怨氣值 · <span id="state-txt">惡魔</span></div>
+</div>
+<div id="hpbar" aria-hidden="true"></div>
+<div class="hint" id="stage-hint">LV.2 惡魔 · 70 點進化血魔</div>
+
+<hr>
+
+<div class="blob-wrap">
+<svg id="blob" class="demon" viewBox="0 0 200 200" role="img" aria-label="潦草惡魔">
+  <ellipse class="halo" cx="100" cy="20" rx="34" ry="10" fill="none" stroke="currentColor" stroke-width="6"/>
+  <g class="horns" fill="currentColor">
+    <path d="M58,52 L36,12 L78,36 Z"/>
+    <path d="M142,52 L164,12 L122,36 Z"/>
+  </g>
+  <path d="M100,34 C142,32 170,64 172,108 C174,152 146,184 100,186 C54,184 26,152 28,108 C30,64 58,36 100,34 Z"
+        fill="none" stroke="currentColor" stroke-width="5"/>
+  <path d="M102,38 C140,36 166,66 168,110 C170,150 144,180 100,182 C58,180 30,150 32,110 C34,68 62,40 102,38 Z"
+        fill="none" stroke="currentColor" stroke-width="3"/>
+  <path d="M52,86 L88,98" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  <path d="M148,86 L112,98" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="72" cy="112" r="7" fill="currentColor"/>
+  <circle cx="128" cy="112" r="7" fill="currentColor"/>
+  <path d="M68,140 L82,132 L94,146 L108,132 L120,146 L132,136 L130,160 L70,160 Z" fill="currentColor"/>
+  <g class="spikes" fill="currentColor">
+    <path d="M32,108 L12,100 L30,122 Z"/>
+    <path d="M168,108 L188,100 L170,122 Z"/>
+    <path d="M100,184 L90,200 L110,198 Z"/>
+  </g>
+  <path d="M28,60 l-14,-8 M172,64 l14,-8 M20,122 l-12,4 M180,122 l12,4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+</svg>
+</div>
+<div class="headline" id="headline">今晚，牠在聽。</div>
+
+<hr>
+
+<textarea id="vent" placeholder="把今天最幹的事罵出來吧…（罵事不罵人／強度惡魔判定）"></textarea>
+<button class="btn-big" id="dump">投入深淵</button>
+<div class="hint" id="dump-hint"></div>
+
+<hr>
+
+<div class="card" id="king" style="display:none"></div>
+<div class="hint" id="reject-line" style="display:none"></div>
+<div id="plaza"></div>
+
+<hr>
+<footer>
+  <div class="hotline">安心專線 1925（24h）· 生命線 1995</div>
+  <div>你的怨氣，是我的電力。惡魔只吃怨氣，不吃人命。</div>
+  <div>昨日：雷陣雨轉晴｜惡魔出沒 3h｜天使守望 5h</div>
+</footer>
+
+<script>
+(function(){
+  var yuanqi = 62;
+  var num = document.getElementById('num'),
+      blob = document.getElementById('blob'),
+      headline = document.getElementById('headline'),
+      stateTxt = document.getElementById('state-txt');
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion) { document.getElementById('rm-hint').style.display = 'block'; }
+  var stageHint = document.getElementById('stage-hint');
+  var twin = blob.cloneNode(true);
+  twin.removeAttribute('id');
+  twin.classList.add('twin');
+  blob.parentNode.appendChild(twin);
+  var hpbar = document.getElementById('hpbar'), hpCells = [];
+  for (var hi = 0; hi < 10; hi++) { var hcell = document.createElement('span'); hpbar.appendChild(hcell); hpCells.push(hcell); }
+
+  function level(){ return yuanqi < 30 ? 0 : (yuanqi < 50 ? 1 : (yuanqi < 70 ? 2 : (yuanqi < 90 ? 3 : 4))); }
+  var stageNames = ['天使', '怨靈', '惡魔', '血魔', '雙子魔王'];
+  var stageLines = ['今晚，天使在人間。', '嘶……有怨氣的味道。', '今晚，牠在聽。', '朕還沒吃飽，再罵啊。', '哈哈哈哈！我們來了！'];
+  var nextEvo = [30, 50, 70, 90, 101];
+
+  function render(){
+    yuanqi = Math.max(0, Math.min(100, yuanqi));
+    num.textContent = yuanqi;
+    var lv = level();
+    document.body.classList.toggle('angel', lv === 0);
+    stateTxt.textContent = stageNames[lv];
+    var raging = lv >= 3;
+    blob.classList.toggle('rage', raging);
+    twin.classList.toggle('rage', raging);
+    var size = Math.round((90 + yuanqi * 1.2) * (lv === 1 ? 0.75 : 1));
+    blob.style.width = size + 'px';
+    blob.style.height = size + 'px';
+    var tsize = Math.round(size * 0.55);
+    twin.style.width = tsize + 'px';
+    twin.style.height = tsize + 'px';
+    twin.style.display = lv >= 4 ? 'block' : 'none';
+    headline.textContent = stageLines[lv];
+    var filled = Math.round(yuanqi / 10);
+    for (var ci = 0; ci < hpCells.length; ci++) { hpCells[ci].classList.toggle('fill', ci < filled); }
+    stageHint.textContent = 'LV.' + lv + ' ' + stageNames[lv] +
+      (lv >= 4 ? ' · 已是完全體' : ' · ' + nextEvo[lv] + ' 點進化' + (lv === 0 ? '（惡魔甦醒）' : ''));
+    setFx(lv);
+  }
+
+  /* 天氣系統：惡魔的背景隨等級加碼 */
+  var fxLayer = document.getElementById('fx');
+  var rainDrops = [];
+  function setRain(n){
+    while (rainDrops.length > n) rainDrops.pop().remove();
+    while (rainDrops.length < n) {
+      var d = document.createElement('div');
+      d.className = 'drop';
+      d.style.left = (Math.random() * 100) + 'vw';
+      d.style.animationDuration = (0.6 + Math.random() * 0.7) + 's';
+      d.style.animationDelay = (Math.random() * 1) + 's';
+      fxLayer.appendChild(d);
+      rainDrops.push(d);
+    }
+  }
+  var fireEl = document.getElementById('fire');
+  function setFire(n){
+    if (fireEl.children.length === n) return;
+    fireEl.innerHTML = '';
+    for (var i = 0; i < n; i++) {
+      var f = document.createElement('span');
+      f.className = 'flame';
+      f.textContent = '▲';
+      f.style.fontSize = (14 + Math.random() * 16) + 'px';
+      f.style.animationDelay = (Math.random() * 0.4) + 's';
+      fireEl.appendChild(f);
+    }
+  }
+  var spiders = [];
+  var spiderSVG = '<svg viewBox="0 0 30 30" width="26" height="26"><ellipse cx="15" cy="16" rx="6" ry="8" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9,10 L2,4 M9,14 L1,12 M9,18 L2,22 M9,22 L4,28"/><path d="M21,10 L28,4 M21,14 L29,12 M21,18 L28,22 M21,22 L26,28"/></g></svg>';
+  function setSpiders(n){
+    while (spiders.length > n) spiders.pop().el.remove();
+    while (spiders.length < n) {
+      var el = document.createElement('div');
+      el.className = 'spider';
+      el.innerHTML = spiderSVG;
+      document.body.appendChild(el);
+      spiders.push({ el: el, x: Math.random() * (window.innerWidth - 30), y: Math.random() * (window.innerHeight - 30),
+                     vx: (Math.random() - 0.5) * 16, vy: (Math.random() - 0.5) * 16 });
+    }
+  }
+  setInterval(function(){
+    if (reduceMotion || document.hidden) return;
+    for (var si = 0; si < spiders.length; si++) {
+      var sp = spiders[si];
+      sp.x += sp.vx; sp.y += sp.vy;
+      if (sp.x < 0 || sp.x > window.innerWidth - 28) sp.vx *= -1;
+      if (sp.y < 0 || sp.y > window.innerHeight - 28) sp.vy *= -1;
+      sp.el.style.left = sp.x + 'px';
+      sp.el.style.top = sp.y + 'px';
+    }
+  }, 140);
+  var flashTimer = null;
+  function scheduleFlash(){
+    clearTimeout(flashTimer);
+    if (reduceMotion || level() < 3) return;
+    flashTimer = setTimeout(function(){
+      var fl = document.getElementById('flash');
+      fl.style.opacity = '0.85';
+      setTimeout(function(){ fl.style.opacity = '0';
+        setTimeout(function(){ fl.style.opacity = '0.6';
+          setTimeout(function(){ fl.style.opacity = '0'; scheduleFlash(); }, 120);
+        }, 90);
+      }, 70);
+    }, 4000 + Math.random() * 5000);
+  }
+  var curFxLv = -1;
+  function setFx(lv){
+    if (reduceMotion || lv === curFxLv) return;
+    curFxLv = lv;
+    setRain(lv === 0 ? 0 : (lv === 1 ? 8 : (lv === 2 ? 18 : 28)));
+    setFire(lv >= 4 ? 16 : (lv >= 3 ? 10 : 0));
+    setSpiders(lv >= 4 ? 4 : 0);
+    scheduleFlash();
+  }
+
+  /* 惡魔品嚐：AI 自動判定怨氣分數（厚黑學惡魔廠長） */
+  var quips = [
+    function(s){ return s + ' 分？就這？你罵得不夠狠。'; },
+    function(s){ return '品嚐完畢：' + s + '/100。嗯，有內味了，本魔收下了。'; },
+    function(s){ return s + ' 分。對方這招厚黑學裡有寫，叫「拖刀計」——你輸在讀書少。'; },
+    function(s){ return s + '/100。罵得好，下次記得開大，本魔愛吃重的。'; }
+  ];
+  function localTaste(text){
+    var hits = (text.match(/[幹靠媽死爛煩氣怒操]/g) || []).length;
+    var bangs = (text.match(/！|!/g) || []).length;
+    var score = 42 + Math.min(27, hits * 9) + Math.min(12, bangs * 4) + (text.length > 60 ? 8 : 0);
+    score = Math.max(40, Math.min(100, score));
+    return { score: score, red: false, quip: quips[Math.floor(Math.random() * quips.length)](score) };
+  }
+
+  /* 真 AI：惡魔品嚐＋抱抱嘲諷，失敗自動降級回本地 */
+  var AI_URL = 'https://ai.taicalc.com/api/ai';
+  var RED_RE = /自殺|想死|死一死|結束一切|不想活|了結/;
+  function aiTaste(text){
+    if (RED_RE.test(text)) return Promise.resolve({ score: 0, red: true, quip: '' });
+    var ctl = new AbortController();
+    var timer = setTimeout(function(){ ctl.abort(); }, 20000);
+    return fetch(AI_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: 'yuanqi-taste', payload: { text: text } }),
+      signal: ctl.signal
+    }).then(function(r){
+      clearTimeout(timer);
+      if (!r.ok) throw 0;
+      return r.json();
+    }).then(function(j){
+      var o = JSON.parse(j.text);
+      if (!o || typeof o.score !== 'number') throw 0;
+      if (o.quip === '__REDLINE__') return { score: 0, red: true, quip: '' };
+      return { score: Math.max(0, Math.min(100, Math.round(o.score))), red: false, quip: String(o.quip || ''), reject: o.reject === true };
+    }).catch(function(){ return localTaste(text); });
+  }
+  var tauntPool = [
+    '抱個屁啊，抱一下你老闆會加薪嗎？',
+    '哎喲好溫馨喔——才怪。抱完了記得回去加班。',
+    '這個抱抱本魔給 3 分，不能再多。',
+    '安慰要是有用，還需要惡魔嗎？',
+    '抱抱？你房東會因為這個降租嗎？',
+    '行了行了，抱一下得了，別演偶像劇。'
+  ];
+  function aiTaunt(text){
+    var ctl = new AbortController();
+    var timer = setTimeout(function(){ ctl.abort(); }, 15000);
+    return fetch(AI_URL, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task: 'yuanqi-taunt', payload: { text: text } }),
+      signal: ctl.signal
+    }).then(function(r){
+      clearTimeout(timer);
+      if (!r.ok) throw 0;
+      return r.json();
+    }).then(function(j){
+      var t = (j.text || '').trim().slice(0, 80);
+      if (!t) throw 0;
+      return t;
+    }).catch(function(){ return tauntPool[Math.floor(Math.random() * tauntPool.length)]; });
+  }
+  var rejectQuips = [
+    '呸，甜的。本魔不吃糖。退件！正能量請左轉，慢走不送。',
+    '0 怨氣？你走錯棚了。這裡是怨氣發電廠，感恩請去別家。',
+    '你的正能量讓本魔掉血了。再貼這種，本魔要報警。',
+    '退件！本廠只收怨氣，不收心靈雞湯。',
+    '這麼開心你來這幹嘛？去跟你朋友說啊。滾——（愛的推擠）'
+  ];
+  var rejected = 0;
+  function showRejectStamp(){
+    var s = document.createElement('div');
+    s.className = 'stamp';
+    s.textContent = '退件';
+    document.body.appendChild(s);
+    setTimeout(function(){ s.remove(); }, 2500);
+  }
+
+  /* dump into abyss: text eaten char by char (reverse typewriter) */
+  var vent = document.getElementById('vent'),
+      dump = document.getElementById('dump'),
+      dhint = document.getElementById('dump-hint');
+  dump.addEventListener('click', function(){
+    var text = vent.value;
+    if (!text.trim()) { dhint.textContent = '先罵點什麼再投。'; return; }
+    function afterMeal(taste){
+      var short = text.length > 18 ? text.slice(0, 18) + '…' : text;
+      vent.value = '';
+      if (taste.red) {
+        dhint.textContent = '……咳。惡魔只吃怨氣，不吃人命。這題我不接——1925 有人 24 小時聽你說。';
+      } else if (taste.reject || taste.score < 20) {
+        rejected++;
+        dhint.textContent = rejectQuips[Math.floor(Math.random() * rejectQuips.length)];
+        showRejectStamp();
+        var rl = document.getElementById('reject-line');
+        rl.style.display = 'block';
+        rl.textContent = '今日退件：' + rejected + ' 件正能量';
+      } else {
+        yuanqi += taste.score;
+        dhint.textContent = 'AI 判定：怨氣 ' + taste.score + '/100。' + taste.quip + '（+' + taste.score + '）';
+        spawnDan('你', short);
+        maybeKing(taste.score, '你', short);
+        var mine = document.createElement('div');
+        mine.className = 'card';
+        mine.style.borderWidth = '4px';
+        mine.innerHTML = '<span class="meta">★ 你 ' + taste.score + '/100</span>：<span class="mtext"></span>';
+        mine.querySelector('.mtext').textContent = text;
+        var pz = document.getElementById('plaza');
+        pz.insertBefore(mine, pz.firstChild);
+      }
+      render();
+      if (!taste.red && !taste.reject && taste.score >= 20) {
+        var cur = parseInt(blob.style.width, 10) || 0;
+        blob.style.width = (cur + 24) + 'px';
+        blob.style.height = (cur + 24) + 'px';
+      }
+      setTimeout(function(){ render(); dump.disabled = false; }, 220);
+    }
+    if (RED_RE.test(text)) { vent.value = ''; afterMeal({ score: 0, red: true, quip: '' }); return; }
+    dump.disabled = true;
+    dhint.textContent = '惡魔正在品嚐你的怨氣…';
+    aiTaste(text).then(function(taste){
+      if (reduceMotion) { afterMeal(taste); return; }
+      var iv = setInterval(function(){
+        if (vent.value.length <= 1) { clearInterval(iv); afterMeal(taste); }
+        else { vent.value = vent.value.slice(0, -8); }
+      }, 40);
+    });
+  });
+
+  /* plaza */
+  var data = [
+    { name: 'tired_owl_073', lv: 82, text: '開會三小時，結論是下週再開一次會。', hugs: 12 },
+    { name: 'rain_frog_211', lv: 67, text: '說好準時下班，老闆五點五十九分丟了三件事過來。', hugs: 7 },
+    { name: 'burnt_rice_058', lv: 94, text: '房東又漲租，薪水倒是三年沒動過。', hugs: 23 }
+  ];
+  var plaza = document.getElementById('plaza');
+  data.forEach(function(d){
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = '<span class="meta">' + d.name + ' ' + d.lv + '/100</span>：<span class="tbody"></span> ' +
+      '<button class="btn-hug" type="button">抱抱 <span class="hug-count">' + d.hugs + '</span></button> ' +
+      '<span class="hint hug-msg"></span>';
+    card.querySelector('.tbody').textContent = d.text;
+    var b = card.querySelector('.btn-hug'),
+        c = card.querySelector('.hug-count'),
+        m = card.querySelector('.hug-msg');
+    b.addEventListener('click', function(){
+      d.hugs++; c.textContent = d.hugs;
+      c.classList.add('flash');
+      setTimeout(function(){ c.classList.remove('flash'); }, reduceMotion ? 0 : 180);
+      yuanqi -= 2; render();
+      m.textContent = '惡魔正在想怎麼嘴你…';
+      aiTaunt(d.text).then(function(t){ m.textContent = t + '（-2）'; });
+    });
+    plaza.appendChild(card);
+  });
+
+  /* 彈幕：留言不在牆上，全在空中飄 */
+  var danLayer = document.getElementById('danmaku');
+  var samples = [
+    { name: 'tired_owl_073', text: '開會三小時，結論是下週再開一次會。' },
+    { name: 'rain_frog_211', text: '說好準時下班，老闆五點五十九分丟了三件事過來。' },
+    { name: 'cold_noodle_114', text: '已讀不回，還敢在群組貼長輩圖。' },
+    { name: 'dark_cloud_007', text: '捷運上被雨傘戳到三次，對方還在滑手機。' }
+  ];
+  function spawnDan(name, text){
+    if (reduceMotion) return;
+    var d = document.createElement('div');
+    d.className = 'dan';
+    d.textContent = name + '：' + text;
+    d.style.top = (4 + Math.random() * 76) + '%';
+    d.style.animationDuration = (8 + Math.random() * 7) + 's';
+    d.addEventListener('animationend', function(){ d.remove(); });
+    danLayer.appendChild(d);
+  }
+  setInterval(function(){
+    if (document.hidden) return;
+    var s = samples[Math.floor(Math.random() * samples.length)];
+    spawnDan(s.name, s.text);
+  }, 5000);
+
+  /* 今日怨氣王 */
+  var kingBox = document.getElementById('king');
+  var king = null;
+  function maybeKing(score, name, text){
+    if (score < 90) return;
+    if (king && score <= king.score) return;
+    king = { score: score, name: name, text: text };
+    kingBox.innerHTML = '■ 今日怨氣王：' + name + '（怨氣 ' + score + '/100）<br>「' + text + '」';
+    kingBox.style.display = 'block';
+  }
+
+  render();
+  maybeKing(94, 'burnt_rice_058', '房東又漲租，薪水倒是三年沒動過。');
+  spawnDan('burnt_rice_058', '房東又漲租，薪水倒是三年沒動過。');
+  setTimeout(function(){ spawnDan('tired_owl_073', '開會三小時，結論是下週再開一次會。'); }, 1800);
+  setTimeout(function(){ spawnDan('cold_noodle_114', '已讀不回，還敢在群組貼長輩圖。'); }, 3600);
+})();
+</script>
+</body>
+</html>
+`;
+
+export default {
+  async fetch() {
+    return new Response(HTML, { headers: { 'content-type': 'text/html; charset=utf-8' } });
+  }
+};
