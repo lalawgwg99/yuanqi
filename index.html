@@ -84,6 +84,12 @@
   @keyframes stamp-in { from { transform: translate(-50%,-50%) rotate(-12deg) scale(2.4); } to { transform: translate(-50%,-50%) rotate(-12deg) scale(1); } }
   @media (prefers-reduced-motion: reduce) { .stamp { animation: none; } }
   .demon-say { color: #d00; font-weight: bold; }
+  /* ---- 酒瓶 ---- */
+  .bottle-fly { position: fixed; z-index: 97; color: var(--fg); pointer-events: none; }
+  .shard { position: fixed; z-index: 97; width: 10px; height: 10px; background: var(--fg); pointer-events: none; }
+  #blob.hit { animation: hit .45s steps(3); }
+  @keyframes hit { 25%{transform:translateX(-10px) rotate(-6deg)} 50%{transform:translateX(6px) rotate(4deg) scaleY(.94)} 75%{transform:translateX(-4px)} }
+  @media (prefers-reduced-motion: reduce) { #blob.hit { animation: none; } }
   .flash { background: var(--fg); color: var(--bg); }
   /* ---- top bar ---- */
   .top { align-items: center; flex-wrap: wrap; gap: 8px; }
@@ -625,6 +631,56 @@
     document.body.appendChild(s);
     setTimeout(function(){ s.remove(); }, 2500);
   }
+  /* 酒瓶砸惡魔：投擲 → 命中碎裂 → 惡魔被砸歪 */
+  var BOTTLE_SVG = '<svg viewBox="0 0 30 82" width="34" height="92"><path d="M11,2 L11,18 L5,32 L5,80 L25,80 L25,32 L19,18 L19,2 Z" style="fill:var(--bg)" stroke="currentColor" stroke-width="3"/><path d="M8,46 L22,46 M8,60 L22,60" stroke="currentColor" stroke-width="2"/></svg>';
+  function throwBottle(done){
+    var b = document.createElement('div');
+    b.className = 'bottle-fly';
+    b.innerHTML = BOTTLE_SVG;
+    document.body.appendChild(b);
+    var vr = vent.getBoundingClientRect(), br = blob.getBoundingClientRect();
+    var x0 = vr.left + vr.width / 2, y0 = vr.top + 20;
+    var x1 = br.left + br.width / 2, y1 = br.top + br.height / 2;
+    var steps = 10, i = 0;
+    var iv = setInterval(function(){
+      i++;
+      var p = i / steps;
+      var x = x0 + (x1 - x0) * p;
+      var y = y0 + (y1 - y0) * p - Math.sin(p * Math.PI) * 60;
+      b.style.left = x + 'px';
+      b.style.top = y + 'px';
+      b.style.transform = 'translate(-50%,-50%) rotate(' + Math.round(p * 300) + 'deg)';
+      if (i >= steps) { clearInterval(iv); smashBottle(b, x1, y1, done); }
+    }, 60);
+  }
+  function smashBottle(b, x, y, done){
+    b.remove();
+    var burstEl = document.getElementById('burst');
+    burstEl.textContent = '鏘！';
+    burstEl.style.display = 'block';
+    for (var k = 0; k < 4; k++) {
+      (function(dx){
+        var sh = document.createElement('div');
+        sh.className = 'shard';
+        sh.style.left = x + 'px';
+        sh.style.top = y + 'px';
+        document.body.appendChild(sh);
+        var n = 0;
+        var iv2 = setInterval(function(){
+          n++;
+          sh.style.transform = 'translate(' + (dx * n) + 'px,' + (n * 14) + 'px) rotate(' + (n * 40) + 'deg)';
+          if (n > 6) { clearInterval(iv2); sh.remove(); }
+        }, 70);
+      })((k - 1.5) * 14);
+    }
+    blob.classList.add('hit');
+    setTimeout(function(){
+      burstEl.style.display = 'none';
+      blob.classList.remove('hit');
+      done();
+    }, 550);
+  }
+
   /* 惡魔開口：一律紅字 */
   function demonSay(el, pre, quip, suf){
     el.innerHTML = '';
@@ -729,10 +785,12 @@
     dhint.textContent = t('tasting');
     aiTaste(text).then(function(taste){
       if (reduceMotion) { afterMeal(taste); return; }
-      var iv = setInterval(function(){
-        if (vent.value.length <= 1) { clearInterval(iv); afterMeal(taste); }
-        else { vent.value = vent.value.slice(0, -8); }
-      }, 40);
+      throwBottle(function(){
+        var iv = setInterval(function(){
+          if (vent.value.length <= 1) { clearInterval(iv); afterMeal(taste); }
+          else { vent.value = vent.value.slice(0, -8); }
+        }, 40);
+      });
     });
   });
 
