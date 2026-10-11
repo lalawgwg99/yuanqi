@@ -286,7 +286,7 @@ const HTML = `<!DOCTYPE html>
     footLine2: '你的怨氣，是我的電力。惡魔只吃怨氣，不吃人命。',
     footPrivacy: '無登入・無追蹤・暱稱只存在你的瀏覽器・本站沒有資料庫',
     boosted: '已經推過了', thinking: '惡魔正在想怎麼嘴你…', praising: '惡魔正在記下這把火…',
-    report: '檢舉', reported: '已檢舉', voice: '語音', voiceNA: '這台裝置不支援錄音。',
+    report: '檢舉', reported: '已檢舉', voice: '語音', voiceAsk: '等一下，正在跟瀏覽器要麥克風權限…', voiceNA: '這台裝置不支援錄音。',
     voiceRec: function(s){ return '錄音中 ' + s + 's…再點停止'; }, voiceListen: '試聽', voiceSend: '送出語音',
     voiceUploading: '上傳中…', voiceFx: '變聲處理中…', playVoice: '播放', voiceTag: '（語音留言）',
     share: '分享', shareCard: '生成分享卡',
@@ -312,7 +312,7 @@ const HTML = `<!DOCTYPE html>
     footLine2: 'Your resentment is my electricity. The demon eats resentment, not lives.',
     footPrivacy: 'No login・No tracking・Nickname lives only in your browser・This site has no database',
     boosted: 'Already boosted', thinking: 'The demon is thinking up a roast…', praising: 'The demon notes this fire…',
-    report: 'Report', reported: 'Reported', voice: 'Voice', voiceNA: 'This device does not support recording.',
+    report: 'Report', reported: 'Reported', voice: 'Voice', voiceAsk: 'Hold on, asking the browser for mic permission…', voiceNA: 'This device does not support recording.',
     voiceRec: function(s){ return 'Recording ' + s + 's… tap to stop'; }, voiceListen: 'Preview', voiceSend: 'Send voice',
     voiceUploading: 'Uploading…', voiceFx: 'Pitch-shifting…', playVoice: 'Play', voiceTag: '(voice message)',
     share: 'Share', shareCard: 'Make share card',
@@ -338,7 +338,7 @@ const HTML = `<!DOCTYPE html>
     footLine2: 'お前の怨気は俺の電力だ。悪魔は怨気を食うが、命は食わない。',
     footPrivacy: 'ログイン不要・追跡なし・ニックネームはあなたのブラウザにのみ保存・DBなし',
     boosted: '応援済み', thinking: '悪魔がツッコミを考え中…', praising: '悪魔がこの火を記録中…',
-    report: '通報', reported: '通報済み', voice: '音声', voiceNA: 'この端末は録音に対応していません。',
+    report: '通報', reported: '通報済み', voice: '音声', voiceAsk: 'ちょっと待って、ブラウザにマイク許可を求めています…', voiceNA: 'この端末は録音に対応していません。',
     voiceRec: function(s){ return '録音中 ' + s + '秒…タップで停止'; }, voiceListen: '試聴', voiceSend: '音声を送る',
     voiceUploading: '送信中…', voiceFx: '変声処理中…', playVoice: '再生', voiceTag: '（音声メッセージ）',
     share: '共有', shareCard: '共有カード作成',
@@ -364,7 +364,7 @@ const HTML = `<!DOCTYPE html>
     footLine2: '네 울분은 나의 전기다. 악마는 울분은 먹어도 목숨은 안 먹어.',
     footPrivacy: '로그인 없음・추적 없음・닉네임은 브라우저에만 저장・DB 없음',
     boosted: '이미 응원함', thinking: '악마가 독설 생각 중…', praising: '악마가 이 불을 기록 중…',
-    report: '신고', reported: '신고됨', voice: '음성', voiceNA: '이 기기는 녹음을 지원하지 않아.',
+    report: '신고', reported: '신고됨', voice: '음성', voiceAsk: '잠깐, 브라우저에 마이크 권한 요청 중…', voiceNA: '이 기기는 녹음을 지원하지 않아.',
     voiceRec: function(s){ return '녹음 중 ' + s + '초…탭하여 정지'; }, voiceListen: '미리듣기', voiceSend: '음성 보내기',
     voiceUploading: '업로드 중…', voiceFx: '변조 처리 중…', playVoice: '재생', voiceTag: '(음성 메시지)',
     share: '공유', shareCard: '공유 카드 만들기',
@@ -895,7 +895,10 @@ const HTML = `<!DOCTYPE html>
         typeof OfflineAudioContext === 'undefined') {
       dhint.textContent = t('voiceNA'); return;
     }
+    voiceBtn.textContent = t('voiceAsk');
+    voiceBtn.disabled = true;
     navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+      voiceBtn.disabled = false;
       var mr;
       try { mr = new MediaRecorder(stream); } catch (e) { dhint.textContent = t('voiceNA'); return; }
       var chunks = [];
@@ -914,7 +917,7 @@ const HTML = `<!DOCTYPE html>
         voiceBtn.textContent = t('voiceRec')(recLeft);
       }, 1000);
       setTimeout(function(){ if (recOn) stopRec(); }, 60000);
-    }).catch(function(){ dhint.textContent = t('voiceNA'); });
+    }).catch(function(){ voiceBtn.disabled = false; voiceBtn.textContent = t('voice'); dhint.textContent = t('voiceNA'); });
   });
   function stopRec(){
     recOn = false;
