@@ -158,7 +158,7 @@ const HTML = `<!DOCTYPE html>
   @media (prefers-reduced-motion: reduce) {
     #blob.pounce, #blob.burp, #blob.glare, #blob.shy, body.shake { animation: none; }
   }
-  #danmaku { position: fixed; top: 0; left: 0; width: 100%; height: 42%; pointer-events: none; overflow: hidden; z-index: 60; }
+  #danmaku { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 42%; pointer-events: none; overflow: hidden; z-index: 60; }
   .dan {
     position: absolute; left: 0; white-space: nowrap;
     border: 2px solid var(--fg); background: var(--bg); color: var(--fg);
@@ -1163,11 +1163,12 @@ const HTML = `<!DOCTYPE html>
     });
     d.style.top = (4 + Math.random() * 76) + '%';
     var gg = colGeom();
-    d.style.left = (gg.l + gg.w) + 'px';
-    d.style.setProperty('--fly-to', '-' + (gg.w + 620) + 'px');
+    d.style.left = '100%';
     d.style.animationDuration = (8 + Math.random() * 7) + 's';
     d.addEventListener('animationend', function(){ d.remove(); });
     danLayer.appendChild(d);
+    var dww = d.offsetWidth || 400;
+    d.style.setProperty('--fly-to', '-' + (gg.w + dww + 10) + 'px');
   }
   document.getElementById('full-close').addEventListener('click', function(){
     document.getElementById('full-layer').style.display = 'none';
