@@ -1267,7 +1267,7 @@ const HTML = `<!DOCTYPE html>
 
   /* 點惡魔：隨機搞怪反應 */
   var demonCd = 0;
-  blob.addEventListener('click', function(){
+  function pokeDemon(){
     var now = Date.now();
     if (now - demonCd < 1500) return;
     demonCd = now;
@@ -1283,7 +1283,9 @@ const HTML = `<!DOCTYPE html>
       document.body.classList.remove('shake');
       blob.classList.remove(a.cls);
     }, reduceMotion ? 1200 : 800);
-  });
+  }
+  blob.addEventListener('click', pokeDemon);
+  try { twin.addEventListener('click', pokeDemon); } catch (e) {}
 
   /* 贊助：隨機流浪動物之家 */
   document.getElementById('sponsor-btn').addEventListener('click', function(){
