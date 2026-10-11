@@ -84,6 +84,51 @@ const HTML = `<!DOCTYPE html>
   @keyframes stamp-in { from { transform: translate(-50%,-50%) rotate(-12deg) scale(2.4); } to { transform: translate(-50%,-50%) rotate(-12deg) scale(1); } }
   @media (prefers-reduced-motion: reduce) { .stamp { animation: none; } }
   .flash { background: var(--fg); color: var(--bg); }
+  /* ---- top bar ---- */
+  .top { align-items: center; flex-wrap: wrap; gap: 8px; }
+  .top-right { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .btn-mini {
+    border: 2px solid var(--fg); background: var(--bg); color: var(--fg);
+    font: inherit; font-size: 12px; padding: 3px 8px; cursor: pointer;
+  }
+  .btn-mini:active, .btn-mini.on { background: var(--fg); color: var(--bg); }
+  #nick-line { margin-top: 6px; }
+  #nick { font-weight: bold; }
+  /* ---- overlays ---- */
+  .layer { position: fixed; inset: 0; z-index: 96; display: flex; align-items: center; justify-content: center; pointer-events: none; padding: 16px; }
+  .layer .box {
+    pointer-events: auto; background: var(--bg); color: var(--fg);
+    border: 4px solid var(--fg); padding: 16px; max-width: 92vw; max-height: 72vh; overflow: auto;
+  }
+  .layer .box .btn-mini { margin-top: 10px; margin-right: 8px; }
+  .burst {
+    position: fixed; left: 50%; top: 36%; z-index: 95; pointer-events: none;
+    transform: translate(-50%,-50%) rotate(-6deg);
+    font-size: 52px; font-weight: bold; white-space: nowrap;
+  }
+  body.shake { animation: bshake .45s steps(4); }
+  @keyframes bshake { 25%{transform:translate(-7px,4px)} 50%{transform:translate(6px,-5px)} 75%{transform:translate(-5px,-4px)} }
+  #blob { cursor: pointer; }
+  #blob.pounce { animation: pounce .7s steps(3); }
+  @keyframes pounce { 0%{transform:scale(1)} 35%{transform:scale(2.6)} 70%{transform:scale(2.6) rotate(-4deg)} 100%{transform:scale(1)} }
+  #blob.burp { animation: burp .6s steps(2); }
+  @keyframes burp { 50%{transform:scaleY(1.28) scaleX(.9)} }
+  #blob.glare { animation: glare .5s steps(3); }
+  @keyframes glare { 25%{transform:translateX(-9px)} 75%{transform:translateX(9px)} }
+  #blob.shy { animation: shy .8s steps(2); }
+  @keyframes shy { 50%{transform:scale(.9) rotate(4deg)} }
+  .dan { pointer-events: auto; cursor: pointer; }
+  .card .tbody { cursor: pointer; }
+  .btn-boost {
+    border: 2px solid var(--fg); background: var(--bg); color: var(--fg);
+    font: inherit; padding: 4px 12px; cursor: pointer;
+  }
+  .btn-boost:active { background: var(--fg); color: var(--bg); }
+  .btn-boost:disabled { border-style: dashed; cursor: default; }
+  .boost-count { font-weight: bold; }
+  @media (prefers-reduced-motion: reduce) {
+    #blob.pounce, #blob.burp, #blob.glare, #blob.shy, body.shake { animation: none; }
+  }
   #danmaku { position: fixed; top: 0; left: 0; width: 100%; height: 42%; pointer-events: none; overflow: hidden; z-index: 60; }
   .dan {
     position: absolute; left: 0; white-space: nowrap;
@@ -112,17 +157,21 @@ const HTML = `<!DOCTYPE html>
 </head>
 <body>
 
-<div class="top"><span>怨氣發電廠</span></div>
+<div class="top"><span id="site-title">怨氣發電廠</span><span class="top-right"><span id="lang-sw"><button class="btn-mini" data-lang="zh-TW">中文</button><button class="btn-mini" data-lang="en">EN</button><button class="btn-mini" data-lang="ja">日本語</button><button class="btn-mini" data-lang="ko">한국어</button></span><button class="btn-mini" id="sponsor-btn">贊助</button></span></div>
+<div class="hint" id="nick-line"><span id="you-are">你是</span> <b id="nick"></b> <button class="btn-mini" id="reroll">換一個</button></div>
 <hr>
 
 <div id="danmaku" aria-hidden="true"></div>
 <div id="fx" aria-hidden="true"></div>
 <div id="flash" aria-hidden="true"></div>
 <div id="fire" aria-hidden="true"></div>
-<div class="hint" id="rm-hint" style="display:none">※ 偵測到你的手機開了「減少動態效果」，彈幕和抖動被系統關掉了。去設定關掉就能看。</div>
+<div class="layer" id="full-layer" style="display:none"><div class="box"><div id="full-text" style="white-space:pre-wrap"></div><br><button class="btn-mini" id="full-close">關閉</button></div></div>
+<div class="layer" id="sponsor-layer" style="display:none"><div class="box"><div style="font-weight:bold;font-size:18px" id="sponsor-title">贊助</div><div id="sponsor-body" style="margin:8px 0"></div><button class="btn-mini" id="sponsor-go">帶我去捐錢 →</button><button class="btn-mini" id="sponsor-close">關閉</button><div class="hint" id="sponsor-note"></div></div></div>
+<div class="burst" id="burst" style="display:none"></div>
+<div class="hint" id="rm-hint" style="display:none"></div>
 <div class="meter-row">
   <div class="meter-num" id="num">62</div>
-  <div class="meter-label">怨氣值 · <span id="state-txt">惡魔</span></div>
+  <div class="meter-label"><span id="meter-label">怨氣值</span> · <span id="state-txt">惡魔</span></div>
 </div>
 <div id="hpbar" aria-hidden="true"></div>
 <div class="hint" id="stage-hint">LV.2 惡魔 · 70 點進化血魔</div>
@@ -153,7 +202,7 @@ const HTML = `<!DOCTYPE html>
   <path d="M28,60 l-14,-8 M172,64 l14,-8 M20,122 l-12,4 M180,122 l12,4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
 </svg>
 </div>
-<div class="headline" id="headline">今晚，牠在聽。</div>
+<div class="headline" id="headline"></div>
 
 <hr>
 
@@ -169,9 +218,9 @@ const HTML = `<!DOCTYPE html>
 
 <hr>
 <footer>
-  <div class="hotline">安心專線 1925（24h）· 生命線 1995</div>
-  <div>你的怨氣，是我的電力。惡魔只吃怨氣，不吃人命。</div>
-  <div>昨日：雷陣雨轉晴｜惡魔出沒 3h｜天使守望 5h</div>
+  <div class="hotline" id="foot-hot">安心專線 1925（24h）· 生命線 1995</div>
+  <div id="foot-line2">你的怨氣，是我的電力。惡魔只吃怨氣，不吃人命。</div>
+  <div id="foot-privacy">無登入・無追蹤・暱稱只存在你的瀏覽器・本站沒有資料庫</div>
 </footer>
 
 <script>
@@ -183,6 +232,138 @@ const HTML = `<!DOCTYPE html>
       stateTxt = document.getElementById('state-txt');
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduceMotion) { document.getElementById('rm-hint').style.display = 'block'; }
+
+  /* ---- i18n ---- */
+  var LANG = localStorage.getItem('yq-lang') || (function(){
+    var bl = (navigator.language || 'zh-TW').toLowerCase();
+    return bl.indexOf('ja') === 0 ? 'ja' : (bl.indexOf('ko') === 0 ? 'ko' : (bl.indexOf('en') === 0 ? 'en' : 'zh-TW'));
+  })();
+  var T = {
+  'zh-TW': {
+    title: '怨氣發電廠', meter: '怨氣值', ventPh: '把今天最幹的事罵出來吧…（罵事不罵人／強度惡魔判定）',
+    dump: '投入深淵', empty: '先罵點什麼再投。', tasting: '惡魔正在品嚐你的怨氣…',
+    hug: '抱抱', boost: '推一把', youAre: '你是', reroll: '換一個',
+    rmHint: '※ 偵測到你的裝置開了「減少動態效果」，彈幕和特效被系統關掉了。去設定關掉就能看。',
+    rejected: '今日退件：', rejectUnit: ' 件正能量', stamp: '退件',
+    scoreLine: function(s, q){ return 'AI 判定：怨氣 ' + s + '/100。' + q + '（+' + s + '）'; },
+    redline: '……咳。惡魔只吃怨氣，不吃人命。這題我不接——1925 有人 24 小時聽你說。',
+    sponsor: '贊助', sponsorTitle: '贊助',
+    sponsorBody: '怨氣發電廠不收你的錢——惡魔只吃怨氣，不吃新台幣。但如果你罵完覺得胸口鬆了一點，考慮把一杯飲料的錢，分給還在等家的小動物。下面的按鈕會隨機帶你去一個台灣的流浪動物之家，他們比惡魔更需要你的善意。',
+    sponsorGo: '帶我去捐錢 →', close: '關閉',
+    sponsorNote: '本站不經手任何款項，捐款直接在各單位網站完成。',
+    footHot: '安心專線 1925（24h）· 生命線 1995',
+    footLine2: '你的怨氣，是我的電力。惡魔只吃怨氣，不吃人命。',
+    footPrivacy: '無登入・無追蹤・暱稱只存在你的瀏覽器・本站沒有資料庫',
+    boosted: '已經推過了', thinking: '惡魔正在想怎麼嘴你…', praising: '惡魔正在記下這把火…',
+    stages: ['天使', '怨靈', '惡魔', '血魔', '雙子魔王'],
+    stageLines: ['今晚，天使在人間。', '嘶……有怨氣的味道。', '今晚，牠在聽。', '朕還沒吃飽，再罵啊。', '哈哈哈哈！我們來了！'],
+    evo: ' 點進化', maxed: ' · 已是完全體', angelWake: '（惡魔甦醒）',
+    kingLine: function(n, s, x){ return '■ 今日怨氣王：' + n + '（怨氣 ' + s + '/100）<br>「' + x + '」'; }
+  },
+  'en': {
+    title: 'Resentment Power Plant', meter: 'RESENTMENT', ventPh: "Dump today's bullshit here… (roast the situation, not people / the demon judges)",
+    dump: 'FEED THE ABYSS', empty: 'Vent something first.', tasting: 'The demon is tasting your resentment…',
+    hug: 'Hug', boost: 'Boost', youAre: 'You are', reroll: 'reroll',
+    rmHint: '※ Your device has "Reduce Motion" on — danmaku and effects are disabled by the system. Turn it off in settings to see them.',
+    rejected: 'Rejected today: ', rejectUnit: ' positivity posts', stamp: 'REJECTED',
+    scoreLine: function(s, q){ return 'AI verdict: resentment ' + s + '/100. ' + q + ' (+' + s + ')'; },
+    redline: '……cough. The demon eats resentment, not lives. I can\'t take this one — please contact a local crisis helpline right now.',
+    sponsor: 'Donate', sponsorTitle: 'Donate',
+    sponsorBody: 'The Resentment Power Plant takes none of your money — the demon eats resentment, not cash. But if venting loosened the knot in your chest, consider giving the price of one drink to a stray animal waiting for a home. The button below takes you to a random stray-animal shelter in Taiwan. They need your kindness more than the demon does.',
+    sponsorGo: 'Take me to donate →', close: 'Close',
+    sponsorNote: 'This site handles no money. Donations happen directly on each organization\'s website.',
+    footHot: 'In crisis? Please contact your local crisis helpline.',
+    footLine2: 'Your resentment is my electricity. The demon eats resentment, not lives.',
+    footPrivacy: 'No login・No tracking・Nickname lives only in your browser・This site has no database',
+    boosted: 'Already boosted', thinking: 'The demon is thinking up a roast…', praising: 'The demon notes this fire…',
+    stages: ['Angel', 'Wraith', 'Demon', 'Blood Demon', 'Twin Demon Lords'],
+    stageLines: ['Tonight, the angel walks among us.', 'Sss… smells like resentment.', 'Tonight, it listens.', 'Not full yet. Curse more.', 'Hahaha! We have arrived!'],
+    evo: ' pts to evolve', maxed: ' · FINAL FORM', angelWake: ' (demon awakening)',
+    kingLine: function(n, s, x){ return '■ Today\'s Resentment Royalty: ' + n + ' (resentment ' + s + '/100)<br>"' + x + '"'; }
+  },
+  'ja': {
+    title: '怨気発電所', meter: '怨気値', ventPh: '今日のムカつきをぶちまけろ…（人を罵るな、事を罵れ／強さは悪魔が判定）',
+    dump: '深淵に投入', empty: 'まず何か文句を書け。', tasting: '悪魔が怨気を味見中…',
+    hug: 'ハグ', boost: '応援', youAre: 'あなたは', reroll: '変更',
+    rmHint: '※ 端末の「モーションを減らす」がオン — 弾幕とエフェクトは無効化されています。設定でオフにすると見られます。',
+    rejected: '今日の却下：', rejectUnit: ' 件のポジティブ', stamp: '却下',
+    scoreLine: function(s, q){ return 'AI判定：怨気 ' + s + '/100。' + q + '（+' + s + '）'; },
+    redline: '……コホン。悪魔は怨気を食うが、命は食わない。この件はパスだ — つらい時は最寄りの相談窓口に連絡してくれ。',
+    sponsor: '寄付', sponsorTitle: '寄付',
+    sponsorBody: '怨気発電所は金を取らない — 悪魔は怨気を食い、現金は食わない。でも愚痴って胸が少し軽くなったなら、飲み物一杯分を、家を待つ野良動物に分けてやってくれ。下のボタンで台湾の動物保護団体のいずれかにランダムで飛ぶ。悪魔より彼らの方が君の優しさを必要としている。',
+    sponsorGo: '寄付しに行く →', close: '閉じる',
+    sponsorNote: '当サイトは金銭を扱いません。寄付は各団体のサイトで直接行われます。',
+    footHot: 'つらい時は、最寄りの相談窓口に連絡してください。',
+    footLine2: 'お前の怨気は俺の電力だ。悪魔は怨気を食うが、命は食わない。',
+    footPrivacy: 'ログイン不要・追跡なし・ニックネームはあなたのブラウザにのみ保存・DBなし',
+    boosted: '応援済み', thinking: '悪魔がツッコミを考え中…', praising: '悪魔がこの火を記録中…',
+    stages: ['天使', '怨霊', '悪魔', '血魔', '双子魔王'],
+    stageLines: ['今夜、天使が舞い降りた。', 'シーッ……怨気の匂い。', '今夜、奴は聞いている。', 'まだ食い足りん。もっと罵れ。', 'ハハハハ！我らが来た！'],
+    evo: 'ptで進化', maxed: ' · 完全体', angelWake: '（悪魔覚醒）',
+    kingLine: function(n, s, x){ return '■ 今日の怨気王：' + n + '（怨気 ' + s + '/100）<br>「' + x + '」'; }
+  },
+  'ko': {
+    title: '울분발전소', meter: '울분 수치', ventPh: '오늘의 짜증을 쏟아내라…（사람 말고 일을 욕해／강도는 악마가 판정）',
+    dump: '심연에 투입', empty: '일단 뭔가 써라.', tasting: '악마가 울분을 맛보는 중…',
+    hug: '허그', boost: '응원', youAre: '당신은', reroll: '변경',
+    rmHint: '※ 기기의 "동작 줄이기"가 켜져 있음 — 자막과 효과가 비활성화되었습니다. 설정에서 끄면 볼 수 있어.',
+    rejected: '오늘의 반려: ', rejectUnit: ' 건의 긍정', stamp: '반려',
+    scoreLine: function(s, q){ return 'AI 판정: 울분 ' + s + '/100. ' + q + ' (+' + s + ')'; },
+    redline: '……콜록. 악마는 울분은 먹어도 목숨은 안 먹어. 이건 패스 — 힘들면 가까운 상담 창구에 연락해.',
+    sponsor: '후원', sponsorTitle: '후원',
+    sponsorBody: '울분발전소는 돈을 받지 않아 — 악마는 울분을 먹지 현금은 안 먹어. 하지만 욕하고 가슴이 좀 가벼워졌다면, 음료 한 잔 값을 집을 기다리는 유기동물에게 나눠줘. 아래 버튼을 누르면 대만의 유기동물 보호단체 중 한 곳으로 랜덤 이동해. 악마보다 걔네가 네 친절을 더 필요로 해.',
+    sponsorGo: '후원하러 가기 →', close: '닫기',
+    sponsorNote: '이 사이트는 돈을 다루지 않아. 후원은 각 단체 사이트에서 직접 이루어져.',
+    footHot: '힘들면 가까운 상담 창구에 연락하세요.',
+    footLine2: '네 울분은 나의 전기다. 악마는 울분은 먹어도 목숨은 안 먹어.',
+    footPrivacy: '로그인 없음・추적 없음・닉네임은 브라우저에만 저장・DB 없음',
+    boosted: '이미 응원함', thinking: '악마가 독설 생각 중…', praising: '악마가 이 불을 기록 중…',
+    stages: ['천사', '원령', '악마', '혈마', '쌍둥이 마왕'],
+    stageLines: ['오늘 밤, 천사가 강림했다.', '쉬잇……울분 냄새.', '오늘 밤, 놈이 듣고 있다.', '아직 배고파. 더 욕해.', '하하하! 우리가 왔다!'],
+    evo: 'pt에 진화', maxed: ' · 완전체', angelWake: '（악마 각성）',
+    kingLine: function(n, s, x){ return '■ 오늘의 울분왕: ' + n + '（울분 ' + s + '/100）<br>"' + x + '"'; }
+  }
+  };
+  function t(k){ return T[LANG][k]; }
+  function applyLang(){
+    document.documentElement.lang = LANG === 'zh-TW' ? 'zh-TW' : LANG;
+    document.title = t('title') + ' v0.1';
+    var $ = function(id){ return document.getElementById(id); };
+    $('site-title').textContent = t('title');
+    $('sponsor-btn').textContent = t('sponsor');
+    $('meter-label').textContent = t('meter');
+    $('vent').placeholder = t('ventPh');
+    $('dump').textContent = t('dump');
+    $('you-are').textContent = t('youAre');
+    $('reroll').textContent = t('reroll');
+    $('rm-hint').textContent = t('rmHint');
+    $('sponsor-title').textContent = t('sponsorTitle');
+    $('sponsor-body').textContent = t('sponsorBody');
+    $('sponsor-go').textContent = t('sponsorGo');
+    $('sponsor-close').textContent = t('close');
+    $('sponsor-note').textContent = t('sponsorNote');
+    $('full-close').textContent = t('close');
+    $('foot-hot').textContent = t('footHot');
+    $('foot-line2').textContent = t('footLine2');
+    $('foot-privacy').textContent = t('footPrivacy');
+    var sw = document.querySelectorAll('#lang-sw button');
+    for (var i = 0; i < sw.length; i++) sw[i].classList.toggle('on', sw[i].getAttribute('data-lang') === LANG);
+    renderPlaza();
+    render();
+  }
+
+  /* ---- 匿名暱稱：只活在你的瀏覽器 ---- */
+  var ADJ = ['tired','burnt','cold','dark','sore','dizzy','grumpy','sleepy','hungry','damp'];
+  var ANM = ['owl','rice','noodle','cloud','frog','cat','panda','toad','eel','moth'];
+  function genNick(){ return ADJ[Math.floor(Math.random() * ADJ.length)] + '_' + ANM[Math.floor(Math.random() * ANM.length)] + '_' + (100 + Math.floor(Math.random() * 900)); }
+  var nick = localStorage.getItem('yq-nick');
+  if (!nick) { nick = genNick(); try { localStorage.setItem('yq-nick', nick); } catch (e) {} }
+  document.getElementById('nick').textContent = nick;
+  document.getElementById('reroll').addEventListener('click', function(){
+    nick = genNick();
+    try { localStorage.setItem('yq-nick', nick); } catch (e) {}
+    document.getElementById('nick').textContent = nick;
+  });
   var stageHint = document.getElementById('stage-hint');
   var twin = blob.cloneNode(true);
   twin.removeAttribute('id');
@@ -201,7 +382,7 @@ const HTML = `<!DOCTYPE html>
     num.textContent = yuanqi;
     var lv = level();
     document.body.classList.toggle('angel', lv === 0);
-    stateTxt.textContent = stageNames[lv];
+    stateTxt.textContent = t('stages')[lv];
     var raging = lv >= 3;
     blob.classList.toggle('rage', raging);
     twin.classList.toggle('rage', raging);
@@ -212,11 +393,11 @@ const HTML = `<!DOCTYPE html>
     twin.style.width = tsize + 'px';
     twin.style.height = tsize + 'px';
     twin.style.display = lv >= 4 ? 'block' : 'none';
-    headline.textContent = stageLines[lv];
+    headline.textContent = t('stageLines')[lv];
     var filled = Math.round(yuanqi / 10);
     for (var ci = 0; ci < hpCells.length; ci++) { hpCells[ci].classList.toggle('fill', ci < filled); }
-    stageHint.textContent = 'LV.' + lv + ' ' + stageNames[lv] +
-      (lv >= 4 ? ' · 已是完全體' : ' · ' + nextEvo[lv] + ' 點進化' + (lv === 0 ? '（惡魔甦醒）' : ''));
+    stageHint.textContent = 'LV.' + lv + ' ' + t('stages')[lv] +
+      (lv >= 4 ? t('maxed') : ' · ' + nextEvo[lv] + t('evo') + (lv === 0 ? t('angelWake') : ''));
     setFx(lv);
   }
 
@@ -297,18 +478,39 @@ const HTML = `<!DOCTYPE html>
   }
 
   /* 惡魔品嚐：AI 自動判定怨氣分數（厚黑學惡魔廠長） */
-  var quips = [
+  var QUIPS = {
+  'zh-TW': [
     function(s){ return s + ' 分？就這？你罵得不夠狠。'; },
     function(s){ return '品嚐完畢：' + s + '/100。嗯，有內味了，本魔收下了。'; },
     function(s){ return s + ' 分。對方這招厚黑學裡有寫，叫「拖刀計」——你輸在讀書少。'; },
     function(s){ return s + '/100。罵得好，下次記得開大，本魔愛吃重的。'; }
-  ];
+  ],
+  'en': [
+    function(s){ return s + '? That\'s it? Curse harder.'; },
+    function(s){ return 'Tasted: ' + s + '/100. Mm, flavorful. The demon accepts.'; },
+    function(s){ return s + '. Your enemy pulled a textbook thick-black move: "delay and deflect". You lost for reading too little.'; },
+    function(s){ return s + '/100. Well cursed. Go bigger next time — the demon likes it heavy.'; }
+  ],
+  'ja': [
+    function(s){ return s + '点？それだけ？もっと罵れ。'; },
+    function(s){ return '味見完了：' + s + '/100。うむ、味がある。悪魔が受け取った。'; },
+    function(s){ return s + '点。相手の手口は厚黒学の「引き延ばし計」だ。お前は勉強不足で負けたな。'; },
+    function(s){ return s + '/100。いい罵りだ。次はもっと激しくいけ、悪魔は濃いのが好きだ。'; }
+  ],
+  'ko': [
+    function(s){ return s + '점? 그게 다야? 더 세게 욕해.'; },
+    function(s){ return '시식 완료: ' + s + '/100. 음, 맛이 있군. 악마가 접수했다.'; },
+    function(s){ return s + '점. 상대 수법은 후흑학의 "질질끌기 전법"이야. 넌 공부가 부족해서 진 거다.'; },
+    function(s){ return s + '/100. 잘 욕했다. 다음엔 더 세게, 악마는 진한 걸 좋아해.'; }
+  ]
+  };
   function localTaste(text){
     var hits = (text.match(/[幹靠媽死爛煩氣怒操]/g) || []).length;
     var bangs = (text.match(/！|!/g) || []).length;
     var score = 42 + Math.min(27, hits * 9) + Math.min(12, bangs * 4) + (text.length > 60 ? 8 : 0);
     score = Math.max(40, Math.min(100, score));
-    return { score: score, red: false, quip: quips[Math.floor(Math.random() * quips.length)](score) };
+    var qp = QUIPS[LANG] || QUIPS['zh-TW'];
+    return { score: score, red: false, quip: qp[Math.floor(Math.random() * qp.length)](score) };
   }
 
   /* 真 AI：惡魔品嚐＋抱抱嘲諷，失敗自動降級回本地 */
@@ -320,7 +522,7 @@ const HTML = `<!DOCTYPE html>
     var timer = setTimeout(function(){ ctl.abort(); }, 20000);
     return fetch(AI_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task: 'yuanqi-taste', payload: { text: text } }),
+      body: JSON.stringify({ task: 'yuanqi-taste', payload: { text: text, lang: LANG } }),
       signal: ctl.signal
     }).then(function(r){
       clearTimeout(timer);
@@ -333,20 +535,46 @@ const HTML = `<!DOCTYPE html>
       return { score: Math.max(0, Math.min(100, Math.round(o.score))), red: false, quip: String(o.quip || ''), reject: o.reject === true };
     }).catch(function(){ return localTaste(text); });
   }
-  var tauntPool = [
+  var TAUNTS = {
+  'zh-TW': [
     '抱個屁啊，抱一下你老闆會加薪嗎？',
     '哎喲好溫馨喔——才怪。抱完了記得回去加班。',
     '這個抱抱本魔給 3 分，不能再多。',
     '安慰要是有用，還需要惡魔嗎？',
     '抱抱？你房東會因為這個降租嗎？',
     '行了行了，抱一下得了，別演偶像劇。'
-  ];
+  ],
+  'en': [
+    'Hug my ass. Will a hug get you a raise?',
+    'Aww, how wholesome — NOT. Done hugging? Back to overtime.',
+    'The demon rates this hug 3/10. Can\'t go higher.',
+    'If hugs worked, why would we need a demon?',
+    'A hug? Will your landlord lower the rent for that?',
+    'Alright, alright, one hug\'s enough. Stop acting in a drama.'
+  ],
+  'ja': [
+    'ハグだと？ハグで給料上がるのか？',
+    'おお温かいね — なんて嘘だ。ハグ終わったら残業に戻れ。',
+    'このハグ、悪魔的評価3点。これ以上はやれん。',
+    'ハグで解決するなら悪魔はいらん。',
+    'ハグ？それで家賃下がるのか？',
+    'わかったわかった、一回で十分だ。ドラマの真似はやめろ。'
+  ],
+  'ko': [
+    '허그는 개뿔. 허그한다고 월급 올라?',
+    '어머 따뜻해라 — 거짓말이고. 허그 끝났으면 야근 복귀.',
+    '이 허그, 악마적 평가 3점. 이상은 못 줘.',
+    '허그로 해결되면 악마가 왜 필요해?',
+    '허그? 그걸로 월세가 내려가?',
+    '알았어 알았어, 한 번이면 됐어. 드라마 찍지 마.'
+  ]
+  };
   function aiTaunt(text){
     var ctl = new AbortController();
     var timer = setTimeout(function(){ ctl.abort(); }, 15000);
     return fetch(AI_URL, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task: 'yuanqi-taunt', payload: { text: text } }),
+      body: JSON.stringify({ task: 'yuanqi-taunt', payload: { text: text, lang: LANG } }),
       signal: ctl.signal
     }).then(function(r){
       clearTimeout(timer);
@@ -356,23 +584,97 @@ const HTML = `<!DOCTYPE html>
       var t = (j.text || '').trim().slice(0, 80);
       if (!t) throw 0;
       return t;
-    }).catch(function(){ return tauntPool[Math.floor(Math.random() * tauntPool.length)]; });
+    }).catch(function(){ var tp = TAUNTS[LANG] || TAUNTS['zh-TW']; return tp[Math.floor(Math.random() * tp.length)]; });
   }
-  var rejectQuips = [
+  var REJECTS = {
+  'zh-TW': [
     '呸，甜的。本魔不吃糖。退件！正能量請左轉，慢走不送。',
     '0 怨氣？你走錯棚了。這裡是怨氣發電廠，感恩請去別家。',
     '你的正能量讓本魔掉血了。再貼這種，本魔要報警。',
     '退件！本廠只收怨氣，不收心靈雞湯。',
     '這麼開心你來這幹嘛？去跟你朋友說啊。滾——（愛的推擠）'
-  ];
+  ],
+  'en': [
+    'Pah, sweet. The demon doesn\'t do sugar. REJECTED! Positivity to the left, no need to see you out.',
+    'Zero resentment? Wrong venue. This is the Resentment Power Plant — take your gratitude elsewhere.',
+    'Your positivity is damaging the demon. Post that again and I\'m calling the cops.',
+    'REJECTED! We take resentment here, not chicken soup for the soul.',
+    'So happy? Go tell your friends. Scram — (with love)'
+  ],
+  'ja': [
+    'ペッ、甘い。悪魔は砂糖を食わん。却下！ポジティブは左へ、見送りは不要だ。',
+    '怨気ゼロ？場違いだ。ここは怨気発電所、感謝は他所でやってくれ。',
+    'お前のポジティブで悪魔がダメージを受けた。もう一度貼ったら通報する。',
+    '却下！うちは怨気しか受け付けん。自己啓発本は持ち帰れ。',
+    'そんなに幸せなら友達に言え。失せろ — （愛を込めて）'
+  ],
+  'ko': [
+    '퉤, 달아. 악마는 설탕 안 먹어. 반려! 긍정은 왼쪽으로, 배웅은 됐어.',
+    '울분 제로? 여긴 울분발전소야. 감사는 다른 데서 해.',
+    '네 긍정 때문에 악마가 데미지를 입었다. 한 번 더 올리면 신고한다.',
+    '반려! 여긴 울분만 받아. 힐링 책은 가져가.',
+    '그렇게 행복하면 친구한테 가서 말해. 꺼져 — （사랑을 담아서）'
+  ]
+  };
   var rejected = 0;
   function showRejectStamp(){
     var s = document.createElement('div');
     s.className = 'stamp';
-    s.textContent = '退件';
+    s.textContent = t('stamp');
     document.body.appendChild(s);
     setTimeout(function(){ s.remove(); }, 2500);
   }
+
+  /* 推一把：惡魔的誇獎池 */
+  var PRAISE = {
+  'zh-TW': [
+    '好！罵得好！本魔給你加雞腿！',
+    '有種！再罵狠一點，本魔愛看！',
+    '推得好！他的怨氣就是我的晚餐！',
+    '漂亮！這把火本魔記下了！'
+  ],
+  'en': [
+    'Yes! Well cursed! The demon owes you a drumstick!',
+    'Gutsy! Curse harder, the demon loves a show!',
+    'Well boosted! His resentment is my dinner!',
+    'Beautiful! The demon notes this fire!'
+  ],
+  'ja': [
+    'よし！いい罵りだ！悪魔から骨付き肉を進呈！',
+    '度胸あるな！もっと罵れ、悪魔は見世物が好きだ！',
+    'いい応援だ！奴の怨気は俺の晩飯だ！',
+    '見事！この火は悪魔が覚えたぞ！'
+  ],
+  'ko': [
+    '좋아! 잘 욕했다! 악마가 치킨을 하사한다!',
+    '배짱 있군! 더 세게 욕해, 악마는 구경을 좋아해!',
+    '잘 밀어줬다! 놈의 울분은 내 저녁이야!',
+    '훌륭해! 이 불은 악마가 기록했다!'
+  ]
+  };
+
+  /* 點惡魔：四種反應 */
+  var demonActs = [
+    { cls: 'pounce', shake: true,
+      burst: { 'zh-TW': '嗷嗚——！！', 'en': 'GRRRR——！！', 'ja': 'ガオーー！！', 'ko': '으르렁——！！' },
+      line: { 'zh-TW': '看什麼看！有怨氣就投，沒怨氣就滾去投！', 'en': 'What are you staring at! Got resentment? Dump it!', 'ja': '何見てんだ！怨気があるなら投げろ！', 'ko': '뭘 봐! 울분 있으면 쏟아!' } },
+    { cls: 'burp', shake: false,
+      burst: { 'zh-TW': '嗝——', 'en': 'BURP——', 'ja': 'ゲプー', 'ko': '꺼억——' },
+      line: { 'zh-TW': '吃太多了…你投的怨氣有點撐。', 'en': 'Ate too much… your resentment is filling.', 'ja': '食いすぎた…お前の怨気が効いてる。', 'ko': '너무 먹었어… 네 울분이 든든하군.' } },
+    { cls: 'glare', shake: false,
+      burst: { 'zh-TW': '哼。', 'en': 'Hmph.', 'ja': 'フン。', 'ko': '흥.' },
+      line: { 'zh-TW': '點我幹嘛？本魔很忙，忙著吃。', 'en': 'Why poke me? The demon is busy. Busy eating.', 'ja': '何だ？悪魔は忙しい。食うのに忙しい。', 'ko': '왜 찔러? 악마는 바빠. 먹는다고 바빠.' } },
+    { cls: 'shy', shake: false,
+      burst: { 'zh-TW': '哎呀…', 'en': 'Oh my…', 'ja': 'あっ…', 'ko': '어머…' },
+      line: { 'zh-TW': '別點啦…人家會害羞…', 'en': 'Stop poking… I\'m shy…', 'ja': 'つつかないで…恥ずかしい…', 'ko': '찌르지 마… 부끄러워…' } }
+  ];
+
+  /* 贊助：隨機流浪動物之家 */
+  var DONATE_LINKS = [
+    { name: '台灣之心愛護動物協會', url: 'https://www.hotac.org.tw/' },
+    { name: '台灣SPCA', url: 'https://www.spca.org.tw/' },
+    { name: '台灣動物緊急救援小組', url: 'https://www.savedogs.org/' }
+  ];
 
   /* dump into abyss: text eaten char by char (reverse typewriter) */
   var vent = document.getElementById('vent'),
@@ -380,31 +682,27 @@ const HTML = `<!DOCTYPE html>
       dhint = document.getElementById('dump-hint');
   dump.addEventListener('click', function(){
     var text = vent.value;
-    if (!text.trim()) { dhint.textContent = '先罵點什麼再投。'; return; }
+    if (!text.trim()) { dhint.textContent = t('empty'); return; }
     function afterMeal(taste){
       var short = text.length > 18 ? text.slice(0, 18) + '…' : text;
       vent.value = '';
       if (taste.red) {
-        dhint.textContent = '……咳。惡魔只吃怨氣，不吃人命。這題我不接——1925 有人 24 小時聽你說。';
+        dhint.textContent = t('redline');
       } else if (taste.reject || taste.score < 20) {
         rejected++;
-        dhint.textContent = rejectQuips[Math.floor(Math.random() * rejectQuips.length)];
+        var rj = REJECTS[LANG] || REJECTS['zh-TW'];
+        dhint.textContent = rj[Math.floor(Math.random() * rj.length)];
         showRejectStamp();
         var rl = document.getElementById('reject-line');
         rl.style.display = 'block';
-        rl.textContent = '今日退件：' + rejected + ' 件正能量';
+        rl.textContent = t('rejected') + rejected + t('rejectUnit');
       } else {
         yuanqi += taste.score;
-        dhint.textContent = 'AI 判定：怨氣 ' + taste.score + '/100。' + taste.quip + '（+' + taste.score + '）';
-        spawnDan('你', short);
-        maybeKing(taste.score, '你', short);
-        var mine = document.createElement('div');
-        mine.className = 'card';
-        mine.style.borderWidth = '4px';
-        mine.innerHTML = '<span class="meta">★ 你 ' + taste.score + '/100</span>：<span class="mtext"></span>';
-        mine.querySelector('.mtext').textContent = text;
-        var pz = document.getElementById('plaza');
-        pz.insertBefore(mine, pz.firstChild);
+        dhint.textContent = t('scoreLine')(taste.score, taste.quip);
+        spawnDan(nick, short);
+        maybeKing(taste.score, nick, short);
+        mineCards.unshift({ id: 'mine-' + Date.now(), name: nick, lv: taste.score, text: text, hugs: 0, boosts: 0, mine: true });
+        renderPlaza();
       }
       render();
       if (!taste.red && !taste.reject && taste.score >= 20) {
@@ -416,7 +714,7 @@ const HTML = `<!DOCTYPE html>
     }
     if (RED_RE.test(text)) { vent.value = ''; afterMeal({ score: 0, red: true, quip: '' }); return; }
     dump.disabled = true;
-    dhint.textContent = '惡魔正在品嚐你的怨氣…';
+    dhint.textContent = t('tasting');
     aiTaste(text).then(function(taste){
       if (reduceMotion) { afterMeal(taste); return; }
       var iv = setInterval(function(){
@@ -428,31 +726,72 @@ const HTML = `<!DOCTYPE html>
 
   /* plaza */
   var data = [
-    { name: 'tired_owl_073', lv: 82, text: '開會三小時，結論是下週再開一次會。', hugs: 12 },
-    { name: 'rain_frog_211', lv: 67, text: '說好準時下班，老闆五點五十九分丟了三件事過來。', hugs: 7 },
-    { name: 'burnt_rice_058', lv: 94, text: '房東又漲租，薪水倒是三年沒動過。', hugs: 23 }
+    { id: 'seed-0', name: 'tired_owl_073', lv: 82, text: '開會三小時，結論是下週再開一次會。', hugs: 12, boosts: 0 },
+    { id: 'seed-1', name: 'rain_frog_211', lv: 67, text: '說好準時下班，老闆五點五十九分丟了三件事過來。', hugs: 7, boosts: 0 },
+    { id: 'seed-2', name: 'burnt_rice_058', lv: 94, text: '房東又漲租，薪水倒是三年沒動過。', hugs: 23, boosts: 0 }
   ];
+  var mineCards = [];
   var plaza = document.getElementById('plaza');
-  data.forEach(function(d){
+  var boostedIds = [];
+  try { boostedIds = JSON.parse(localStorage.getItem('yq-boosted') || '[]'); } catch (e) { boostedIds = []; }
+  function effLv(d){ return d.lv + d.boosts * 5; }
+  function makeCard(d){
     var card = document.createElement('div');
     card.className = 'card';
-    card.innerHTML = '<span class="meta">' + d.name + ' ' + d.lv + '/100</span>：<span class="tbody"></span> ' +
-      '<button class="btn-hug" type="button">抱抱 <span class="hug-count">' + d.hugs + '</span></button> ' +
-      '<span class="hint hug-msg"></span>';
-    card.querySelector('.tbody').textContent = d.text;
+    if (d.mine) card.style.borderWidth = '4px';
+    var boosted = boostedIds.indexOf(d.id) >= 0;
+    card.innerHTML = '<span class="meta">' + (d.mine ? '★ ' : '') + '<b class="cname"></b> <span class="clv"></span></span>：<span class="tbody"></span> ' +
+      '<button class="btn-hug" type="button">' + t('hug') + ' <span class="hug-count">' + d.hugs + '</span></button> ' +
+      '<button class="btn-boost" type="button"' + (boosted ? ' disabled' : '') + '>' + t('boost') + ' <span class="boost-count">' + d.boosts + '</span></button> ' +
+      '<span class="hint card-msg"></span>';
+    card.querySelector('.cname').textContent = d.name;
+    card.querySelector('.clv').textContent = effLv(d) + '/100';
+    var tb = card.querySelector('.tbody');
+    var full = d.text;
+    if (full.length > 120) {
+      tb.textContent = full.slice(0, 120) + '…';
+      tb.setAttribute('data-exp', '0');
+      tb.addEventListener('click', function(){
+        var exp = tb.getAttribute('data-exp') === '1';
+        tb.textContent = exp ? full.slice(0, 120) + '…' : full;
+        tb.setAttribute('data-exp', exp ? '0' : '1');
+      });
+    } else {
+      tb.textContent = full;
+    }
     var b = card.querySelector('.btn-hug'),
         c = card.querySelector('.hug-count'),
-        m = card.querySelector('.hug-msg');
+        bb = card.querySelector('.btn-boost'),
+        bc = card.querySelector('.boost-count'),
+        m = card.querySelector('.card-msg');
     b.addEventListener('click', function(){
       d.hugs++; c.textContent = d.hugs;
       c.classList.add('flash');
       setTimeout(function(){ c.classList.remove('flash'); }, reduceMotion ? 0 : 180);
       yuanqi -= 2; render();
-      m.textContent = '惡魔正在想怎麼嘴你…';
-      aiTaunt(d.text).then(function(t){ m.textContent = t + '（-2）'; });
+      m.textContent = t('thinking');
+      aiTaunt(d.text).then(function(x){ m.textContent = x + '（-2）'; });
     });
-    plaza.appendChild(card);
-  });
+    bb.addEventListener('click', function(){
+      if (boostedIds.indexOf(d.id) >= 0) { m.textContent = t('boosted'); return; }
+      boostedIds.push(d.id);
+      try { localStorage.setItem('yq-boosted', JSON.stringify(boostedIds)); } catch (e) {}
+      d.boosts++; bc.textContent = d.boosts;
+      bb.disabled = true;
+      card.querySelector('.clv').textContent = effLv(d) + '/100';
+      yuanqi = Math.min(100, yuanqi + 1); render();
+      m.textContent = t('praising');
+      var pr = PRAISE[LANG] || PRAISE['zh-TW'];
+      setTimeout(function(){ m.textContent = pr[Math.floor(Math.random() * pr.length)] + '（+5）'; }, 600);
+      maybeKing(effLv(d), d.name, d.text);
+    });
+    return card;
+  }
+  function renderPlaza(){
+    plaza.innerHTML = '';
+    var all = mineCards.concat(data);
+    for (var i = 0; i < all.length; i++) plaza.appendChild(makeCard(all[i]));
+  }
 
   /* 彈幕：留言不在牆上，全在空中飄 */
   var danLayer = document.getElementById('danmaku');
@@ -466,12 +805,19 @@ const HTML = `<!DOCTYPE html>
     if (reduceMotion) return;
     var d = document.createElement('div');
     d.className = 'dan';
-    d.textContent = name + '：' + text;
+    d.textContent = name + '：' + (text.length > 26 ? text.slice(0, 26) + '…' : text);
+    d.addEventListener('click', function(){
+      document.getElementById('full-text').textContent = name + '：\n' + text;
+      document.getElementById('full-layer').style.display = 'flex';
+    });
     d.style.top = (4 + Math.random() * 76) + '%';
     d.style.animationDuration = (8 + Math.random() * 7) + 's';
     d.addEventListener('animationend', function(){ d.remove(); });
     danLayer.appendChild(d);
   }
+  document.getElementById('full-close').addEventListener('click', function(){
+    document.getElementById('full-layer').style.display = 'none';
+  });
   setInterval(function(){
     if (document.hidden) return;
     var s = samples[Math.floor(Math.random() * samples.length)];
@@ -485,11 +831,56 @@ const HTML = `<!DOCTYPE html>
     if (score < 90) return;
     if (king && score <= king.score) return;
     king = { score: score, name: name, text: text };
-    kingBox.innerHTML = '■ 今日怨氣王：' + name + '（怨氣 ' + score + '/100）<br>「' + text + '」';
+    var kt = text.length > 40 ? text.slice(0, 40) + '…' : text;
+    kingBox.innerHTML = t('kingLine')(name, score, kt);
     kingBox.style.display = 'block';
   }
 
-  render();
+  /* 點惡魔：隨機搞怪反應 */
+  var demonCd = 0;
+  blob.addEventListener('click', function(){
+    var now = Date.now();
+    if (now - demonCd < 1500) return;
+    demonCd = now;
+    var a = demonActs[Math.floor(Math.random() * demonActs.length)];
+    var burstEl = document.getElementById('burst');
+    burstEl.textContent = a.burst[LANG] || a.burst['zh-TW'];
+    burstEl.style.display = 'block';
+    if (a.shake && !reduceMotion) document.body.classList.add('shake');
+    if (!reduceMotion) blob.classList.add(a.cls);
+    dhint.textContent = a.line[LANG] || a.line['zh-TW'];
+    setTimeout(function(){
+      burstEl.style.display = 'none';
+      document.body.classList.remove('shake');
+      blob.classList.remove(a.cls);
+    }, reduceMotion ? 1200 : 800);
+  });
+
+  /* 贊助：隨機流浪動物之家 */
+  document.getElementById('sponsor-btn').addEventListener('click', function(){
+    var pick = DONATE_LINKS[Math.floor(Math.random() * DONATE_LINKS.length)];
+    var go = document.getElementById('sponsor-go');
+    go.textContent = t('sponsorGo') + '（' + pick.name + '）';
+    go.onclick = function(){ window.open(pick.url, '_blank', 'noopener'); };
+    document.getElementById('sponsor-layer').style.display = 'flex';
+  });
+  document.getElementById('sponsor-close').addEventListener('click', function(){
+    document.getElementById('sponsor-layer').style.display = 'none';
+  });
+
+  /* 語言切換 */
+  var langBtns = document.querySelectorAll('#lang-sw button');
+  for (var li = 0; li < langBtns.length; li++) {
+    (function(b){
+      b.addEventListener('click', function(){
+        LANG = b.getAttribute('data-lang');
+        try { localStorage.setItem('yq-lang', LANG); } catch (e) {}
+        applyLang();
+      });
+    })(langBtns[li]);
+  }
+
+  applyLang();
   maybeKing(94, 'burnt_rice_058', '房東又漲租，薪水倒是三年沒動過。');
   spawnDan('burnt_rice_058', '房東又漲租，薪水倒是三年沒動過。');
   setTimeout(function(){ spawnDan('tired_owl_073', '開會三小時，結論是下週再開一次會。'); }, 1800);
