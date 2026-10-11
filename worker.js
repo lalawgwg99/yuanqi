@@ -379,7 +379,7 @@ const HTML = `<!DOCTYPE html>
   var nextEvo = [30, 50, 70, 90, 101];
 
   function render(){
-    yuanqi = Math.max(0, Math.min(100, yuanqi));
+    yuanqi = Math.max(0, yuanqi);
     num.textContent = yuanqi;
     var lv = level();
     document.body.classList.toggle('angel', lv === 0);
@@ -387,7 +387,7 @@ const HTML = `<!DOCTYPE html>
     var raging = lv >= 3;
     blob.classList.toggle('rage', raging);
     twin.classList.toggle('rage', raging);
-    var size = Math.round((90 + yuanqi * 1.2) * (lv === 1 ? 0.75 : 1));
+    var size = Math.min(240, Math.round((90 + yuanqi * 1.2) * (lv === 1 ? 0.75 : 1)));
     blob.style.width = size + 'px';
     blob.style.height = size + 'px';
     var tsize = Math.round(size * 0.55);
@@ -395,7 +395,7 @@ const HTML = `<!DOCTYPE html>
     twin.style.height = tsize + 'px';
     twin.style.display = lv >= 4 ? 'block' : 'none';
     headline.textContent = t('stageLines')[lv];
-    var filled = Math.round(yuanqi / 10);
+    var filled = Math.min(10, Math.round(yuanqi / 10));
     for (var ci = 0; ci < hpCells.length; ci++) { hpCells[ci].classList.toggle('fill', ci < filled); }
     stageHint.textContent = 'LV.' + lv + ' ' + t('stages')[lv] +
       (lv >= 4 ? t('maxed') : ' · ' + nextEvo[lv] + t('evo') + (lv === 0 ? t('angelWake') : ''));
@@ -791,7 +791,7 @@ const HTML = `<!DOCTYPE html>
       d.boosts++; bc.textContent = d.boosts;
       bb.disabled = true;
       card.querySelector('.clv').textContent = effLv(d) + '/100';
-      yuanqi = Math.min(100, yuanqi + 1); render();
+      yuanqi += 1; render();
       m.textContent = t('praising');
       var pr = PRAISE[LANG] || PRAISE['zh-TW'];
       setTimeout(function(){ demonSay(m, '', pr[Math.floor(Math.random() * pr.length)], '（+5）'); }, 600);
