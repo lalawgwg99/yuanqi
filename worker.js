@@ -90,6 +90,19 @@ const HTML = `<!DOCTYPE html>
   #blob.hit { animation: hit .45s steps(3); }
   @keyframes hit { 25%{transform:translateX(-10px) rotate(-6deg)} 50%{transform:translateX(6px) rotate(4deg) scaleY(.94)} 75%{transform:translateX(-4px)} }
   @media (prefers-reduced-motion: reduce) { #blob.hit { animation: none; } }
+  /* ---- LV.5/6 ---- */
+  .demon .thirdeye, .demon .crown { display: none; }
+  body[data-lv="5"] .demon .thirdeye, body[data-lv="6"] .demon .thirdeye { display: block; }
+  body[data-lv="6"] .demon .crown { display: block; }
+  body[data-lv="6"] .demon .horns { display: none; }
+  body.rage5 .drop { background: #d00; }
+  /* ---- vent buttons ---- */
+  .vent-btns { display: flex; gap: 8px; margin-top: 8px; }
+  .vent-btns .btn-big { width: auto; margin: 0; }
+  #dump { flex: 1; }
+  #voice-btn { flex: 0 0 auto; font-size: 15px; padding: 12px 16px; }
+  #voice-panel { margin-top: 8px; }
+  #voice-panel .btn-mini { margin-right: 8px; }
   .flash { background: var(--fg); color: var(--bg); }
   /* ---- top bar ---- */
   .top { align-items: center; flex-wrap: wrap; gap: 8px; }
@@ -207,6 +220,13 @@ const HTML = `<!DOCTYPE html>
     <path d="M100,184 L90,200 L110,198 Z"/>
   </g>
   <path d="M28,60 l-14,-8 M172,64 l14,-8 M20,122 l-12,4 M180,122 l12,4" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  <g class="thirdeye">
+    <circle cx="100" cy="62" r="10" fill="none" stroke="currentColor" stroke-width="4"/>
+    <circle cx="100" cy="62" r="3.5" fill="currentColor"/>
+  </g>
+  <g class="crown">
+    <path d="M68,36 L76,8 L88,28 L100,4 L112,28 L124,8 L132,36 Z" fill="none" stroke="currentColor" stroke-width="4"/>
+  </g>
 </svg>
 </div>
 <div class="headline" id="headline"></div>
@@ -214,14 +234,17 @@ const HTML = `<!DOCTYPE html>
 <hr>
 
 <textarea id="vent" placeholder="把今天最幹的事罵出來吧…（罵事不罵人／強度惡魔判定）"></textarea>
-<button class="btn-big" id="dump">投入深淵</button>
+<div class="vent-btns"><button class="btn-big" id="dump">投入深淵</button><button class="btn-big" id="voice-btn">語音</button></div>
 <div class="hint" id="dump-hint"></div>
+<div class="hint" id="share-slot"></div>
 
 <hr>
 
 <div class="card" id="king" style="display:none"></div>
 <div class="hint" id="reject-line" style="display:none"></div>
 <div id="plaza"></div>
+
+<div class="card" id="weather-card" style="display:none"></div>
 
 <hr>
 <footer>
@@ -232,6 +255,7 @@ const HTML = `<!DOCTYPE html>
 
 <script>
 (function(){
+  var lowEnd = (navigator.deviceMemory || 8) <= 3;
   var yuanqi = 62;
   var num = document.getElementById('num'),
       blob = document.getElementById('blob'),
@@ -262,8 +286,13 @@ const HTML = `<!DOCTYPE html>
     footLine2: '你的怨氣，是我的電力。惡魔只吃怨氣，不吃人命。',
     footPrivacy: '無登入・無追蹤・暱稱只存在你的瀏覽器・本站沒有資料庫',
     boosted: '已經推過了', thinking: '惡魔正在想怎麼嘴你…', praising: '惡魔正在記下這把火…',
-    stages: ['天使', '怨靈', '惡魔', '血魔', '雙子魔王'],
-    stageLines: ['今晚，天使在人間。', '嘶……有怨氣的味道。', '今晚，牠在聽。', '朕還沒吃飽，再罵啊。', '哈哈哈哈！我們來了！'],
+    report: '檢舉', reported: '已檢舉', voice: '語音', voiceNA: '這台裝置不支援錄音。',
+    voiceRec: function(s){ return '錄音中 ' + s + 's…再點停止'; }, voiceListen: '試聽', voiceSend: '送出語音',
+    voiceUploading: '上傳中…', voiceFx: '變聲處理中…', playVoice: '播放', voiceTag: '（語音留言）',
+    share: '分享', shareCard: '生成分享卡',
+    weatherLine: function(w){ return '昨日氣象：' + w.vents + ' 則／怨氣 +' + w.total + '／退件 ' + w.rejects + '／最高 ' + w.peak; },
+    stages: ['天使', '怨靈', '惡魔', '血魔', '雙子魔王', '三目魔君', '混沌帝君'],
+    stageLines: ['今晚，天使在人間。', '嘶……有怨氣的味道。', '今晚，牠在聽。', '朕還沒吃飽，再罵啊。', '哈哈哈哈！我們來了！', '三隻眼，全都盯著你罵。', '朕即混沌。跪下。'],
     evo: ' 點進化', maxed: ' · 已是完全體', angelWake: '（惡魔甦醒）',
     kingLine: function(n, s, x){ return '■ 今日怨氣王：' + n + '（怨氣 ' + s + '/100）<br>「' + x + '」'; }
   },
@@ -276,15 +305,20 @@ const HTML = `<!DOCTYPE html>
     scoreLine: function(s){ return ['Demon verdict: resentment ' + s + '/100. ', ' (+' + s + ')']; },
     redline: '……cough. The demon eats resentment, not lives. I can\'t take this one — please contact a local crisis helpline right now.',
     sponsor: 'Donate', sponsorTitle: 'Donate',
-    sponsorBody: 'The Resentment Power Plant takes none of your money — the demon eats resentment, not cash. But if venting loosened the knot in your chest, consider giving the price of one drink to a stray animal waiting for a home. The button below takes you to a random stray-animal shelter in Taiwan. They need your kindness more than the demon does.',
+    sponsorBody: 'The Resentment Power Plant takes none of your money — the demon eats resentment, not cash. But if venting loosened the knot in your chest, consider giving the price of one drink to a stray animal waiting for a home. The button below takes you to a random stray-animal shelter. They need your kindness more than the demon does.',
     sponsorGo: 'Take me to donate →', close: 'Close',
     sponsorNote: 'This site handles no money. Donations happen directly on each organization\'s website.',
     footHot: 'In crisis? Please contact your local crisis helpline.',
     footLine2: 'Your resentment is my electricity. The demon eats resentment, not lives.',
     footPrivacy: 'No login・No tracking・Nickname lives only in your browser・This site has no database',
     boosted: 'Already boosted', thinking: 'The demon is thinking up a roast…', praising: 'The demon notes this fire…',
-    stages: ['Angel', 'Wraith', 'Demon', 'Blood Demon', 'Twin Demon Lords'],
-    stageLines: ['Tonight, the angel walks among us.', 'Sss… smells like resentment.', 'Tonight, it listens.', 'Not full yet. Curse more.', 'Hahaha! We have arrived!'],
+    report: 'Report', reported: 'Reported', voice: 'Voice', voiceNA: 'This device does not support recording.',
+    voiceRec: function(s){ return 'Recording ' + s + 's… tap to stop'; }, voiceListen: 'Preview', voiceSend: 'Send voice',
+    voiceUploading: 'Uploading…', voiceFx: 'Pitch-shifting…', playVoice: 'Play', voiceTag: '(voice message)',
+    share: 'Share', shareCard: 'Make share card',
+    weatherLine: function(w){ return 'Yesterday: ' + w.vents + ' vents / +' + w.total + ' resentment / ' + w.rejects + ' rejected / peak ' + w.peak; },
+    stages: ['Angel', 'Wraith', 'Demon', 'Blood Demon', 'Twin Demon Lords', 'Three-Eyed Demon Lord', 'Primal Chaos Emperor'],
+    stageLines: ['Tonight, the angel walks among us.', 'Sss… smells like resentment.', 'Tonight, it listens.', 'Not full yet. Curse more.', 'Hahaha! We have arrived!', 'Three eyes. All watching you curse.', 'I AM chaos. Kneel.'],
     evo: ' pts to evolve', maxed: ' · FINAL FORM', angelWake: ' (demon awakening)',
     kingLine: function(n, s, x){ return '■ Today\'s Resentment Royalty: ' + n + ' (resentment ' + s + '/100)<br>"' + x + '"'; }
   },
@@ -304,8 +338,13 @@ const HTML = `<!DOCTYPE html>
     footLine2: 'お前の怨気は俺の電力だ。悪魔は怨気を食うが、命は食わない。',
     footPrivacy: 'ログイン不要・追跡なし・ニックネームはあなたのブラウザにのみ保存・DBなし',
     boosted: '応援済み', thinking: '悪魔がツッコミを考え中…', praising: '悪魔がこの火を記録中…',
-    stages: ['天使', '怨霊', '悪魔', '血魔', '双子魔王'],
-    stageLines: ['今夜、天使が舞い降りた。', 'シーッ……怨気の匂い。', '今夜、奴は聞いている。', 'まだ食い足りん。もっと罵れ。', 'ハハハハ！我らが来た！'],
+    report: '通報', reported: '通報済み', voice: '音声', voiceNA: 'この端末は録音に対応していません。',
+    voiceRec: function(s){ return '録音中 ' + s + '秒…タップで停止'; }, voiceListen: '試聴', voiceSend: '音声を送る',
+    voiceUploading: '送信中…', voiceFx: '変声処理中…', playVoice: '再生', voiceTag: '（音声メッセージ）',
+    share: '共有', shareCard: '共有カード作成',
+    weatherLine: function(w){ return '昨日の気象：' + w.vents + ' 件／怨気 +' + w.total + '／却下 ' + w.rejects + '／最高 ' + w.peak; },
+    stages: ['天使', '怨霊', '悪魔', '血魔', '双子魔王', '三つ目魔君', '混沌帝君'],
+    stageLines: ['今夜、天使が舞い降りた。', 'シーッ……怨気の匂い。', '今夜、奴は聞いている。', 'まだ食い足りん。もっと罵れ。', 'ハハハハ！我らが来た！', '三つの目が、お前の罵りを見ている。', '我こそ混沌。ひれ伏せ。'],
     evo: 'ptで進化', maxed: ' · 完全体', angelWake: '（悪魔覚醒）',
     kingLine: function(n, s, x){ return '■ 今日の怨気王：' + n + '（怨気 ' + s + '/100）<br>「' + x + '」'; }
   },
@@ -325,8 +364,13 @@ const HTML = `<!DOCTYPE html>
     footLine2: '네 울분은 나의 전기다. 악마는 울분은 먹어도 목숨은 안 먹어.',
     footPrivacy: '로그인 없음・추적 없음・닉네임은 브라우저에만 저장・DB 없음',
     boosted: '이미 응원함', thinking: '악마가 독설 생각 중…', praising: '악마가 이 불을 기록 중…',
-    stages: ['천사', '원령', '악마', '혈마', '쌍둥이 마왕'],
-    stageLines: ['오늘 밤, 천사가 강림했다.', '쉬잇……울분 냄새.', '오늘 밤, 놈이 듣고 있다.', '아직 배고파. 더 욕해.', '하하하! 우리가 왔다!'],
+    report: '신고', reported: '신고됨', voice: '음성', voiceNA: '이 기기는 녹음을 지원하지 않아.',
+    voiceRec: function(s){ return '녹음 중 ' + s + '초…탭하여 정지'; }, voiceListen: '미리듣기', voiceSend: '음성 보내기',
+    voiceUploading: '업로드 중…', voiceFx: '변조 처리 중…', playVoice: '재생', voiceTag: '(음성 메시지)',
+    share: '공유', shareCard: '공유 카드 만들기',
+    weatherLine: function(w){ return '어제 기상: ' + w.vents + ' 건／울분 +' + w.total + '／반려 ' + w.rejects + '／최고 ' + w.peak; },
+    stages: ['천사', '원령', '악마', '혈마', '쌍둥이 마왕', '삼목마군', '혼돈제군'],
+    stageLines: ['오늘 밤, 천사가 강림했다.', '쉬잇……울분 냄새.', '오늘 밤, 놈이 듣고 있다.', '아직 배고파. 더 욕해.', '하하하! 우리가 왔다!', '세 개의 눈이 네 욕을 지켜본다.', '짐이 곧 혼돈이다. 꿇어라.'],
     evo: 'pt에 진화', maxed: ' · 완전체', angelWake: '（악마 각성）',
     kingLine: function(n, s, x){ return '■ 오늘의 울분왕: ' + n + '（울분 ' + s + '/100）<br>"' + x + '"'; }
   }
@@ -341,6 +385,7 @@ const HTML = `<!DOCTYPE html>
     $('meter-label').textContent = t('meter');
     $('vent').placeholder = t('ventPh');
     $('dump').textContent = t('dump');
+    $('voice-btn').textContent = t('voice');
     $('you-are').textContent = t('youAre');
     $('reroll').textContent = t('reroll');
     $('rm-hint').textContent = t('rmHint');
@@ -353,6 +398,7 @@ const HTML = `<!DOCTYPE html>
     $('foot-hot').textContent = t('footHot');
     $('foot-line2').textContent = t('footLine2');
     $('foot-privacy').textContent = t('footPrivacy');
+    if (weatherCache) renderWeather();
     var sw = document.querySelectorAll('#lang-sw button');
     for (var i = 0; i < sw.length; i++) sw[i].classList.toggle('on', sw[i].getAttribute('data-lang') === LANG);
     renderPlaza();
@@ -379,16 +425,18 @@ const HTML = `<!DOCTYPE html>
   var hpbar = document.getElementById('hpbar'), hpCells = [];
   for (var hi = 0; hi < 10; hi++) { var hcell = document.createElement('span'); hpbar.appendChild(hcell); hpCells.push(hcell); }
 
-  function level(){ return yuanqi < 30 ? 0 : (yuanqi < 50 ? 1 : (yuanqi < 70 ? 2 : (yuanqi < 90 ? 3 : 4))); }
+  function level(){ return yuanqi < 30 ? 0 : yuanqi < 50 ? 1 : yuanqi < 70 ? 2 : yuanqi < 90 ? 3 : yuanqi < 150 ? 4 : yuanqi < 400 ? 5 : 6; }
   var stageNames = ['天使', '怨靈', '惡魔', '血魔', '雙子魔王'];
   var stageLines = ['今晚，天使在人間。', '嘶……有怨氣的味道。', '今晚，牠在聽。', '朕還沒吃飽，再罵啊。', '哈哈哈哈！我們來了！'];
-  var nextEvo = [30, 50, 70, 90, 101];
+  var nextEvo = [30, 50, 70, 90, 150, 400, Infinity];
 
   function render(){
     yuanqi = Math.max(0, yuanqi);
     num.textContent = yuanqi;
     var lv = level();
     document.body.classList.toggle('angel', lv === 0);
+    document.body.setAttribute('data-lv', lv);
+    document.body.classList.toggle('rage5', lv >= 5);
     stateTxt.textContent = t('stages')[lv];
     var raging = lv >= 3;
     blob.classList.toggle('rage', raging);
@@ -404,7 +452,7 @@ const HTML = `<!DOCTYPE html>
     var filled = Math.min(10, Math.round(yuanqi / 10));
     for (var ci = 0; ci < hpCells.length; ci++) { hpCells[ci].classList.toggle('fill', ci < filled); }
     stageHint.textContent = 'LV.' + lv + ' ' + t('stages')[lv] +
-      (lv >= 4 ? t('maxed') : ' · ' + nextEvo[lv] + t('evo') + (lv === 0 ? t('angelWake') : ''));
+      (lv >= 6 ? t('maxed') : ' · ' + nextEvo[lv] + t('evo') + (lv === 0 ? t('angelWake') : ''));
     setFx(lv);
   }
 
@@ -412,6 +460,7 @@ const HTML = `<!DOCTYPE html>
   var fxLayer = document.getElementById('fx');
   var rainDrops = [];
   function setRain(n){
+    if (lowEnd) n = Math.ceil(n / 2);
     while (rainDrops.length > n) rainDrops.pop().remove();
     while (rainDrops.length < n) {
       var d = document.createElement('div');
@@ -439,6 +488,7 @@ const HTML = `<!DOCTYPE html>
   var spiders = [];
   var spiderSVG = '<svg viewBox="0 0 30 30" width="26" height="26"><ellipse cx="15" cy="16" rx="6" ry="8" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9,10 L2,4 M9,14 L1,12 M9,18 L2,22 M9,22 L4,28"/><path d="M21,10 L28,4 M21,14 L29,12 M21,18 L28,22 M21,22 L26,28"/></g></svg>';
   function setSpiders(n){
+    if (lowEnd) return;
     while (spiders.length > n) spiders.pop().el.remove();
     while (spiders.length < n) {
       var el = document.createElement('div');
@@ -463,7 +513,7 @@ const HTML = `<!DOCTYPE html>
   var flashTimer = null;
   function scheduleFlash(){
     clearTimeout(flashTimer);
-    if (reduceMotion || level() < 3) return;
+    if (reduceMotion || lowEnd || level() < 3) return;
     flashTimer = setTimeout(function(){
       var fl = document.getElementById('flash');
       fl.style.opacity = '0.85';
@@ -478,9 +528,9 @@ const HTML = `<!DOCTYPE html>
   function setFx(lv){
     if (reduceMotion || lv === curFxLv) return;
     curFxLv = lv;
-    setRain(lv === 0 ? 0 : (lv === 1 ? 8 : (lv === 2 ? 18 : 28)));
-    setFire(lv >= 4 ? 16 : (lv >= 3 ? 10 : 0));
-    setSpiders(lv >= 4 ? 4 : 0);
+    setRain(lv === 0 ? 0 : (lv === 1 ? 8 : (lv === 2 ? 18 : (lv >= 5 ? 40 : 28))));
+    setFire(lv >= 6 ? 24 : (lv >= 4 ? 16 : (lv >= 3 ? 10 : 0)));
+    setSpiders(lv >= 6 ? 6 : (lv >= 4 ? 4 : 0));
     scheduleFlash();
   }
 
@@ -523,6 +573,13 @@ const HTML = `<!DOCTYPE html>
   /* 真 AI：惡魔品嚐＋抱抱嘲諷，失敗自動降級回本地 */
   var AI_URL = 'https://ai.taicalc.com/api/ai';
   var RED_RE = /自殺|想死|死一死|結束一切|不想活|了結/;
+  var PII_RE = /(09\d{2}-?\d{3}-?\d{3}|[A-Z][12]\d{8})/;
+  var PII_MSG = {
+    'zh-TW': '想貼個資？本魔不吃這套。',
+    'en': 'Personal info? The demon doesn\'t eat that.',
+    'ja': '個人情報？悪魔は食わん。',
+    'ko': '개인정보? 악마는 안 먹어.'
+  };
   function aiTaste(text){
     if (RED_RE.test(text)) return Promise.resolve({ score: 0, red: true, quip: '' });
     var ctl = new AbortController();
@@ -539,7 +596,12 @@ const HTML = `<!DOCTYPE html>
       var o = JSON.parse(j.text);
       if (!o || typeof o.score !== 'number') throw 0;
       if (o.quip === '__REDLINE__') return { score: 0, red: true, quip: '' };
-      return { score: Math.max(0, Math.min(100, Math.round(o.score))), red: false, quip: String(o.quip || ''), reject: o.reject === true };
+      var q = String(o.quip || '');
+      if ((LANG === 'ja' || LANG === 'ko') && !o.reject) {
+        var qp = QUIPS[LANG] || QUIPS['zh-TW'];
+        q = qp[Math.floor(Math.random() * qp.length)](0);
+      }
+      return { score: Math.max(0, Math.min(100, Math.round(o.score))), red: false, quip: q, reject: o.reject === true };
     }).catch(function(){ return localTaste(text); });
   }
   var TAUNTS = {
@@ -577,6 +639,10 @@ const HTML = `<!DOCTYPE html>
   ]
   };
   function aiTaunt(text){
+    if (LANG === 'ja' || LANG === 'ko') {
+      var tp0 = TAUNTS[LANG] || TAUNTS['zh-TW'];
+      return Promise.resolve(tp0[Math.floor(Math.random() * tp0.length)]);
+    }
     var ctl = new AbortController();
     var timer = setTimeout(function(){ ctl.abort(); }, 15000);
     return fetch(AI_URL, {
@@ -736,12 +802,20 @@ const HTML = `<!DOCTYPE html>
       line: { 'zh-TW': '別點啦…人家會害羞…', 'en': 'Stop poking… I\'m shy…', 'ja': 'つつかないで…恥ずかしい…', 'ko': '찌르지 마… 부끄러워…' } }
   ];
 
-  /* 贊助：隨機流浪動物之家 */
-  var DONATE_LINKS = [
+  /* 贊助：隨機流浪動物之家（英文版走國際組織） */
+  var DONATE_TW = [
     { name: '台灣之心愛護動物協會', url: 'https://www.hotac.org.tw/' },
     { name: '台灣SPCA', url: 'https://www.spca.org.tw/' },
     { name: '台灣動物緊急救援小組', url: 'https://www.savedogs.org/' }
   ];
+  var DONATE_LINKS = {
+    'zh-TW': DONATE_TW, 'ja': DONATE_TW, 'ko': DONATE_TW,
+    'en': [
+      { name: 'Taiwan SPCA', url: 'https://www.spca.org.tw/' },
+      { name: 'ASPCA', url: 'https://www.aspca.org/' },
+      { name: 'Best Friends', url: 'https://bestfriends.org/' }
+    ]
+  };
 
   /* dump into abyss: text eaten char by char (reverse typewriter) */
   var vent = document.getElementById('vent'),
@@ -750,6 +824,7 @@ const HTML = `<!DOCTYPE html>
   dump.addEventListener('click', function(){
     var text = vent.value;
     if (!text.trim()) { dhint.textContent = t('empty'); return; }
+    if (PII_RE.test(text)) { demonSay(dhint, '', PII_MSG[LANG] || PII_MSG['zh-TW'], ''); return; }
     function afterMeal(taste){
       var short = text.length > 18 ? text.slice(0, 18) + '…' : text;
       vent.value = '';
@@ -758,11 +833,24 @@ const HTML = `<!DOCTYPE html>
       } else if (taste.reject || taste.score < 20) {
         rejected++;
         var rj = REJECTS[LANG] || REJECTS['zh-TW'];
-        demonSay(dhint, '', rj[Math.floor(Math.random() * rj.length)], '');
+        var rq = rj[Math.floor(Math.random() * rj.length)];
+        demonSay(dhint, '', rq, '');
         showRejectStamp();
         var rl = document.getElementById('reject-line');
         rl.style.display = 'block';
         rl.textContent = t('rejected') + rejected + t('rejectUnit');
+        var slot = document.getElementById('share-slot');
+        slot.innerHTML = '';
+        var shb = document.createElement('button');
+        shb.className = 'btn-mini'; shb.type = 'button'; shb.style.fontWeight = 'bold';
+        shb.textContent = t('shareCard');
+        shb.addEventListener('click', function(){
+          var cv = makeShareCard({ big: t('stamp'), small: '', quip: rq, nick: nick });
+          shareCanvas(cv, 'yuanqi-reject.png');
+          slot.innerHTML = '';
+        });
+        slot.appendChild(shb);
+        setTimeout(function(){ slot.innerHTML = ''; }, 8000);
       } else {
         yuanqi += taste.score;
         var sl = t('scoreLine')(taste.score);
@@ -771,6 +859,10 @@ const HTML = `<!DOCTYPE html>
         maybeKing(taste.score, nick, short);
         mineCards.unshift({ id: 'mine-' + Date.now(), name: nick, lv: taste.score, text: text, hugs: 0, boosts: 0, mine: true });
         renderPlaza();
+        (function(cardRef){
+          apiPost('/api/vent', { nick: nick, text: text, score: taste.score, quip: taste.quip, lang: LANG, reject: false })
+            .then(function(r){ if (r && r.ok && r.id != null) cardRef.id = r.id; });
+        })(mineCards[0]);
       }
       render();
       if (!taste.red && !taste.reject && taste.score >= 20) {
@@ -794,6 +886,119 @@ const HTML = `<!DOCTYPE html>
     });
   });
 
+  /* 語音留言：錄音 → 0.7x 惡魔變聲 → 試聽 → 上傳 */
+  var voiceBtn = document.getElementById('voice-btn');
+  var mrRef = null, recTimer = null, recLeft = 0, recOn = false;
+  voiceBtn.addEventListener('click', function(){
+    if (recOn) { stopRec(); return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined' ||
+        typeof OfflineAudioContext === 'undefined') {
+      dhint.textContent = t('voiceNA'); return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(stream){
+      var mr;
+      try { mr = new MediaRecorder(stream); } catch (e) { dhint.textContent = t('voiceNA'); return; }
+      var chunks = [];
+      mr.ondataavailable = function(e){ if (e.data && e.data.size) chunks.push(e.data); };
+      mr.onstop = function(){
+        stream.getTracks().forEach(function(tr){ try { tr.stop(); } catch (e) {} });
+        finishRec(new Blob(chunks, { type: mr.mimeType || 'audio/webm' }));
+      };
+      mrRef = mr; recOn = true;
+      mr.start();
+      recLeft = 60;
+      voiceBtn.textContent = t('voiceRec')(recLeft);
+      recTimer = setInterval(function(){
+        recLeft--;
+        if (recLeft <= 0) { stopRec(); return; }
+        voiceBtn.textContent = t('voiceRec')(recLeft);
+      }, 1000);
+      setTimeout(function(){ if (recOn) stopRec(); }, 60000);
+    }).catch(function(){ dhint.textContent = t('voiceNA'); });
+  });
+  function stopRec(){
+    recOn = false;
+    if (recTimer) { clearInterval(recTimer); recTimer = null; }
+    voiceBtn.textContent = t('voice');
+    try { if (mrRef && mrRef.state !== 'inactive') mrRef.stop(); } catch (e) {}
+    mrRef = null;
+  }
+  function encodeWAV(buf){
+    var ch = buf.getChannelData(0), n = ch.length, sr = buf.sampleRate;
+    var ab = new ArrayBuffer(44 + n * 2), v = new DataView(ab);
+    function ws(o, str){ for (var i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); }
+    ws(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); ws(8, 'WAVE'); ws(12, 'fmt ');
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, sr, true); v.setUint32(28, sr * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+    ws(36, 'data'); v.setUint32(40, n * 2, true);
+    for (var i = 0; i < n; i++) {
+      var x = Math.max(-1, Math.min(1, ch[i]));
+      v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7FFF, true);
+    }
+    return new Blob([ab], { type: 'audio/wav' });
+  }
+  function finishRec(blob){
+    dhint.textContent = t('voiceFx');
+    try {
+      blob.arrayBuffer().then(function(ab){
+        var AC = window.AudioContext || window.webkitAudioContext;
+        var ac = new AC();
+        ac.decodeAudioData(ab, function(buf){
+          try {
+            var rate = 0.7;
+            var oc = new OfflineAudioContext(1, Math.max(1, Math.ceil(buf.length / rate)), buf.sampleRate);
+            var src = oc.createBufferSource();
+            src.buffer = buf; src.playbackRate.value = rate;
+            src.connect(oc.destination); src.start();
+            oc.startRendering().then(function(rb){
+              showVoicePanel(encodeWAV(rb));
+              dhint.textContent = '';
+              try { ac.close(); } catch (e) {}
+            }).catch(function(){ dhint.textContent = t('voiceNA'); });
+          } catch (e) { dhint.textContent = t('voiceNA'); }
+        }, function(){ dhint.textContent = t('voiceNA'); });
+      }).catch(function(){ dhint.textContent = t('voiceNA'); });
+    } catch (e) { dhint.textContent = t('voiceNA'); }
+  }
+  function showVoicePanel(wav){
+    var old = document.getElementById('voice-panel');
+    if (old) old.remove();
+    var p = document.createElement('div');
+    p.id = 'voice-panel';
+    var b1 = document.createElement('button'); b1.className = 'btn-mini'; b1.type = 'button'; b1.textContent = t('voiceListen');
+    var b2 = document.createElement('button'); b2.className = 'btn-mini'; b2.type = 'button'; b2.textContent = t('voiceSend');
+    b1.addEventListener('click', function(){
+      try { new Audio(URL.createObjectURL(wav)).play(); } catch (e) {}
+    });
+    b2.addEventListener('click', function(){
+      b2.disabled = true;
+      dhint.textContent = t('voiceUploading');
+      var fd = new FormData();
+      fd.append('audio', wav, 'voice.wav');
+      fd.append('nick', nick);
+      fetch('/api/voice', { method: 'POST', body: fd }).then(function(r){
+        if (!r.ok) throw 0; return r.json();
+      }).then(function(j){
+        p.remove(); dhint.textContent = '';
+        addVoiceCard(j && j.ok ? j : null, wav);
+      }).catch(function(){
+        p.remove(); dhint.textContent = '';
+        addVoiceCard(null, wav);
+      });
+    });
+    p.appendChild(b1); p.appendChild(document.createTextNode(' ')); p.appendChild(b2);
+    vent.parentNode.insertBefore(p, vent.nextSibling);
+  }
+  function addVoiceCard(j, wav){
+    var url = (j && j.url) || URL.createObjectURL(wav);
+    var id = (j && j.id != null) ? j.id : 'voice-' + Date.now();
+    yuanqi += 50;
+    spawnDan(nick, t('voiceTag'));
+    maybeKing(50, nick, t('voiceTag'));
+    mineCards.unshift({ id: id, name: nick, lv: 50, text: '', voice: true, url: url, hugs: 0, boosts: 0, mine: true });
+    renderPlaza(); render();
+  }
+
   /* plaza */
   var data = [
     { id: 'seed-0', name: 'tired_owl_073', lv: 82, text: '開會三小時，結論是下週再開一次會。', hugs: 12, boosts: 0 },
@@ -804,6 +1009,8 @@ const HTML = `<!DOCTYPE html>
   var plaza = document.getElementById('plaza');
   var boostedIds = [];
   try { boostedIds = JSON.parse(localStorage.getItem('yq-boosted') || '[]'); } catch (e) { boostedIds = []; }
+  var reportedIds = {};
+  try { JSON.parse(localStorage.getItem('yq-reported') || '[]').forEach(function(x){ reportedIds[x] = 1; }); } catch (e) {}
   function effLv(d){ return d.lv + d.boosts * 5; }
   function makeCard(d){
     var card = document.createElement('div');
@@ -813,12 +1020,22 @@ const HTML = `<!DOCTYPE html>
     card.innerHTML = '<span class="meta">' + (d.mine ? '★ ' : '') + '<b class="cname"></b> <span class="clv"></span></span>：<span class="tbody"></span> ' +
       '<button class="btn-hug" type="button">' + t('hug') + ' <span class="hug-count">' + d.hugs + '</span></button> ' +
       '<button class="btn-boost" type="button"' + (boosted ? ' disabled' : '') + '>' + t('boost') + ' <span class="boost-count">' + d.boosts + '</span></button> ' +
+      '<button class="btn-mini btn-report" type="button"' + (reportedIds[d.id] ? ' disabled' : '') + '>' + (reportedIds[d.id] ? t('reported') : t('report')) + '</button> ' +
       '<span class="hint card-msg"></span>';
     card.querySelector('.cname').textContent = d.name;
     card.querySelector('.clv').textContent = effLv(d) + '/100';
     var tb = card.querySelector('.tbody');
-    var full = d.text;
-    if (full.length > 120) {
+    var full = d.text || '';
+    if (d.voice) {
+      var pv = document.createElement('button');
+      pv.className = 'btn-mini'; pv.type = 'button';
+      pv.textContent = '▶ ' + t('playVoice');
+      pv.addEventListener('click', function(){ if (d.url) { try { new Audio(d.url).play(); } catch (e) {} } });
+      tb.appendChild(pv);
+      var vtag = document.createElement('span');
+      vtag.textContent = ' ' + t('voiceTag');
+      tb.appendChild(vtag);
+    } else if (full.length > 120) {
       tb.textContent = full.slice(0, 120) + '…';
       tb.setAttribute('data-exp', '0');
       tb.addEventListener('click', function(){
@@ -841,6 +1058,7 @@ const HTML = `<!DOCTYPE html>
       yuanqi -= 2; render();
       m.textContent = t('thinking');
       aiTaunt(d.text).then(function(x){ demonSay(m, '', x, '（-2）'); });
+      apiPost('/api/hug', { id: d.id });
     });
     bb.addEventListener('click', function(){
       if (boostedIds.indexOf(d.id) >= 0) { m.textContent = t('boosted'); return; }
@@ -854,6 +1072,21 @@ const HTML = `<!DOCTYPE html>
       var pr = PRAISE[LANG] || PRAISE['zh-TW'];
       setTimeout(function(){ demonSay(m, '', pr[Math.floor(Math.random() * pr.length)], '（+5）'); }, 600);
       maybeKing(effLv(d), d.name, d.text);
+      apiPost('/api/boost', { id: d.id });
+    });
+    var rp = card.querySelector('.btn-report');
+    rp.addEventListener('click', function(){
+      if (reportedIds[d.id]) return;
+      reportedIds[d.id] = 1;
+      try {
+        var arr = []; for (var k in reportedIds) arr.push(k);
+        localStorage.setItem('yq-reported', JSON.stringify(arr));
+      } catch (e) {}
+      rp.textContent = t('reported'); rp.disabled = true;
+      try {
+        fetch('/api/report', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: d.id, reason: '' }) }).catch(function(){});
+      } catch (e) {}
     });
     return card;
   }
@@ -894,16 +1127,139 @@ const HTML = `<!DOCTYPE html>
     spawnDan(s.name, s.text);
   }, 5000);
 
+  /* ---- 後端 API（失敗就當沒這回事，本地照玩） ---- */
+  var weatherCache = null;
+  function apiGet(path){
+    return fetch(path).then(function(r){ if (!r.ok) throw 0; return r.json(); });
+  }
+  function apiPost(path, data){
+    return fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) })
+      .then(function(r){ if (!r.ok) throw 0; return r.json(); })
+      .catch(function(){ return null; });
+  }
+  function loadState(){
+    apiGet('/api/state').then(function(st){
+      if (!st) return;
+      if (typeof st.yuanqi === 'number') yuanqi = Math.max(0, st.yuanqi);
+      if (typeof st.rejects === 'number' && st.rejects > 0) {
+        rejected = st.rejects;
+        var rl = document.getElementById('reject-line');
+        rl.style.display = 'block';
+        rl.textContent = t('rejected') + rejected + t('rejectUnit');
+      }
+      if (st.king && typeof st.king.score === 'number') { king = null; maybeKing(st.king.score, st.king.nick || '?', st.king.text || ''); }
+      if (Array.isArray(st.vents) && st.vents.length) {
+        data.length = 0;
+        st.vents.forEach(function(v){
+          data.push({ id: v.id, name: v.nick || '?', lv: v.score || 0, text: v.text || '', hugs: v.hugs || 0, boosts: v.boosts || 0, voice: !!v.voice, url: v.url });
+        });
+        renderPlaza();
+      }
+      render();
+    }).catch(function(){});
+  }
+  function pollState(){
+    apiGet('/api/state').then(function(st){
+      if (!st) return;
+      if (typeof st.yuanqi === 'number') { yuanqi = Math.max(0, st.yuanqi); render(); }
+      if (typeof st.rejects === 'number' && st.rejects !== rejected) {
+        rejected = st.rejects;
+        var rl = document.getElementById('reject-line');
+        if (rejected > 0) { rl.style.display = 'block'; rl.textContent = t('rejected') + rejected + t('rejectUnit'); }
+        else { rl.style.display = 'none'; }
+      }
+      if (st.king && typeof st.king.score === 'number' && (!king || st.king.score > king.score)) {
+        king = null; maybeKing(st.king.score, st.king.nick || '?', st.king.text || '');
+      }
+    }).catch(function(){});
+  }
+  function renderWeather(){
+    var wc = document.getElementById('weather-card');
+    if (!weatherCache) { wc.style.display = 'none'; return; }
+    wc.textContent = t('weatherLine')(weatherCache);
+    wc.style.display = 'block';
+  }
+  function loadWeather(){
+    apiGet('/api/weather').then(function(w){
+      if (!w || typeof w.vents !== 'number') return;
+      weatherCache = w;
+      renderWeather();
+    }).catch(function(){});
+  }
+
   /* 今日怨氣王 */
   var kingBox = document.getElementById('king');
   var king = null;
   function maybeKing(score, name, text){
     if (score < 90) return;
     if (king && score <= king.score) return;
-    king = { score: score, name: name, text: text };
+    king = { score: score, name: name, text: text, nick: name };
     var kt = text.length > 40 ? text.slice(0, 40) + '…' : text;
     kingBox.innerHTML = t('kingLine')(name, score, kt);
     kingBox.style.display = 'block';
+    var sh = document.createElement('button');
+    sh.className = 'btn-mini'; sh.type = 'button'; sh.style.marginTop = '8px';
+    sh.textContent = t('share');
+    sh.addEventListener('click', function(){
+      if (!king) return;
+      var cv = makeShareCard({ big: String(king.score), small: '/100', quip: king.text, nick: king.nick });
+      shareCanvas(cv, 'yuanqi-king.png');
+    });
+    kingBox.appendChild(sh);
+  }
+
+  /* 分享卡：900x900 黑白 brutalism */
+  function wrapText(c, text, x, y, maxW, lh, maxLines){
+    var chars = String(text).split(''), line = '', yy = y, n = 0;
+    for (var i = 0; i < chars.length; i++) {
+      var t2 = line + chars[i];
+      if (c.measureText(t2).width > maxW && line) {
+        c.fillText(line, x, yy); line = chars[i]; yy += lh; n++;
+        if (n >= maxLines) { line = line.slice(0, Math.max(0, line.length - 1)) + '…'; break; }
+      } else { line = t2; }
+    }
+    c.fillText(line, x, yy);
+    return yy + lh;
+  }
+  function makeShareCard(o){
+    var cv = document.createElement('canvas');
+    cv.width = 900; cv.height = 900;
+    var c = cv.getContext('2d');
+    c.fillStyle = '#fff'; c.fillRect(0, 0, 900, 900);
+    c.strokeStyle = '#000'; c.lineWidth = 24; c.strokeRect(28, 28, 844, 844);
+    c.fillStyle = '#000'; c.textAlign = 'center';
+    c.font = 'bold 60px ui-monospace, Menlo, monospace';
+    c.fillText(t('title'), 450, 150);
+    c.font = 'bold 260px ui-monospace, Menlo, monospace';
+    c.fillText(o.big, 450, 440);
+    if (o.small) { c.font = 'bold 70px ui-monospace, Menlo, monospace'; c.fillText(o.small, 450, 530); }
+    c.textAlign = 'left';
+    c.font = '42px ui-monospace, Menlo, monospace';
+    wrapText(c, o.quip, 90, 630, 720, 58, 3);
+    c.font = '34px ui-monospace, Menlo, monospace';
+    c.fillText('@' + o.nick, 90, 810);
+    c.textAlign = 'right';
+    var d = new Date();
+    var ds = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    c.fillText(ds, 810, 810);
+    return cv;
+  }
+  function shareCanvas(cv, filename){
+    cv.toBlob(function(blob){
+      if (!blob) return;
+      try {
+        var file = new File([blob], filename, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] }) && navigator.share) {
+          navigator.share({ files: [file] }).catch(function(){});
+          return;
+        }
+      } catch (e) {}
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 5000);
+    }, 'image/png');
   }
 
   /* 點惡魔：隨機搞怪反應 */
@@ -916,7 +1272,7 @@ const HTML = `<!DOCTYPE html>
     var burstEl = document.getElementById('burst');
     burstEl.textContent = a.burst[LANG] || a.burst['zh-TW'];
     burstEl.style.display = 'block';
-    if (a.shake && !reduceMotion) document.body.classList.add('shake');
+    if (a.shake && !reduceMotion && !lowEnd) document.body.classList.add('shake');
     if (!reduceMotion) blob.classList.add(a.cls);
     demonSay(dhint, '', a.line[LANG] || a.line['zh-TW'], '');
     setTimeout(function(){
@@ -928,7 +1284,8 @@ const HTML = `<!DOCTYPE html>
 
   /* 贊助：隨機流浪動物之家 */
   document.getElementById('sponsor-btn').addEventListener('click', function(){
-    var pick = DONATE_LINKS[Math.floor(Math.random() * DONATE_LINKS.length)];
+    var links = DONATE_LINKS[LANG] || DONATE_LINKS['zh-TW'];
+    var pick = links[Math.floor(Math.random() * links.length)];
     var go = document.getElementById('sponsor-go');
     go.textContent = t('sponsorGo') + '（' + pick.name + '）';
     go.onclick = function(){ window.open(pick.url, '_blank', 'noopener'); };
@@ -955,14 +1312,205 @@ const HTML = `<!DOCTYPE html>
   spawnDan('burnt_rice_058', '房東又漲租，薪水倒是三年沒動過。');
   setTimeout(function(){ spawnDan('tired_owl_073', '開會三小時，結論是下週再開一次會。'); }, 1800);
   setTimeout(function(){ spawnDan('cold_noodle_114', '已讀不回，還敢在群組貼長輩圖。'); }, 3600);
+  loadState();
+  loadWeather();
+  setInterval(pollState, 20000);
 })();
 </script>
 </body>
 </html>
 `;
 
+// ===== API routes (from api-routes.js) =====
+// 怨氣發電廠真後端：D1 + R2 API 路由
+// 部署時整檔拼進 worker.js（handleApi 自包含，不依賴外部變數）
+
+// ===== D1 schema（建表用，註解備用）=====
+const D1_SCHEMA = [
+"CREATE TABLE IF NOT EXISTS vents(id INTEGER PRIMARY KEY AUTOINCREMENT, nick TEXT, text TEXT, score INTEGER, quip TEXT, lang TEXT, reject INTEGER DEFAULT 0, ip TEXT, hugs INTEGER DEFAULT 0, boosts INTEGER DEFAULT 0, voice_key TEXT, created_at INTEGER)",
+"CREATE TABLE IF NOT EXISTS kv(k TEXT PRIMARY KEY, v TEXT)",
+"CREATE TABLE IF NOT EXISTS reports(id INTEGER PRIMARY KEY AUTOINCREMENT, vent_id INTEGER, reason TEXT, ip TEXT, created_at INTEGER)",
+"INSERT INTO kv(k,v) SELECT 'yuanqi','62' WHERE NOT EXISTS (SELECT 1 FROM kv WHERE k='yuanqi')"
+].join(";\n");
+
+function yqTwDate(ms){
+  var t = new Date((ms || Date.now()) + 8 * 3600 * 1000);
+  return t.toISOString().slice(0, 10); // YYYY-MM-DD（UTC+8）
+}
+function yqDayKey(ms){
+  return 'rejects_' + yqTwDate(ms).replace(/-/g, '');
+}
+function yqDayStartMs(ymd){
+  var p = ymd.split('-');
+  return Date.UTC(+p[0], +p[1] - 1, +p[2]) - 8 * 3600 * 1000;
+}
+async function yqKvGet(env, k, def){
+  var r = await env.DB.prepare('SELECT v FROM kv WHERE k=?').bind(k).first();
+  return r ? r.v : def;
+}
+async function yqKvSet(env, k, v){
+  await env.DB.prepare('INSERT INTO kv(k,v) VALUES(?,?) ON CONFLICT(k) DO UPDATE SET v=excluded.v').bind(k, String(v)).run();
+}
+function yqIp(request){
+  return request.headers.get('cf-connecting-ip') || 'unknown';
+}
+
+async function yqState(env){
+  var y = parseInt(await yqKvGet(env, 'yuanqi', '62'), 10) || 0;
+  var rejects = parseInt(await yqKvGet(env, yqDayKey(), '0'), 10) || 0;
+  var kingRaw = await yqKvGet(env, 'king', null);
+  var rows = await env.DB.prepare(
+    'SELECT id,nick,text,score,hugs,boosts,voice_key,created_at FROM vents ORDER BY id DESC LIMIT 20'
+  ).all();
+  var vents = (rows.results || []).map(function(r){
+    return { id: r.id, nick: r.nick, text: r.text, score: r.score, hugs: r.hugs || 0,
+             boosts: r.boosts || 0, voice: !!r.voice_key, created: r.created_at };
+  });
+  return { yuanqi: y, rejects: rejects, king: kingRaw ? JSON.parse(kingRaw) : null, vents: vents };
+}
+
+async function yqVent(request, env){
+  var ip = yqIp(request);
+  var body = await request.json();
+  var nick = String(body.nick || 'anon').slice(0, 40);
+  var text = String(body.text || '').slice(0, 2000);
+  var score = Math.max(0, Math.min(100, parseInt(body.score, 10) || 0));
+  var quip = String(body.quip || '').slice(0, 200);
+  var lang = String(body.lang || 'zh-TW').slice(0, 10);
+  var reject = body.reject ? 1 : 0;
+  // 限流：同 IP 1 小時內最多 30 筆
+  var c = await env.DB.prepare('SELECT COUNT(*) AS n FROM vents WHERE ip=? AND created_at>?')
+    .bind(ip, Date.now() - 3600 * 1000).first();
+  if (c && c.n >= 30) return Response.json({ error: 'too many' }, { status: 429 });
+  var info = await env.DB.prepare(
+    'INSERT INTO vents(nick,text,score,quip,lang,reject,ip,created_at) VALUES(?,?,?,?,?,?,?,?)'
+  ).bind(nick, text, score, quip, lang, reject, ip, Date.now()).run();
+  var id = info.meta.last_row_id;
+  var y = parseInt(await yqKvGet(env, 'yuanqi', '62'), 10) || 0;
+  if (!reject) {
+    y += score;
+    await yqKvSet(env, 'yuanqi', y);
+  } else {
+    var rk = yqDayKey();
+    var rc = (parseInt(await yqKvGet(env, rk, '0'), 10) || 0) + 1;
+    await yqKvSet(env, rk, rc);
+  }
+  if (!reject && score >= 90) {
+    var kingRaw = await yqKvGet(env, 'king', null);
+    var king = kingRaw ? JSON.parse(kingRaw) : null;
+    if (!king || score > king.score) {
+      await yqKvSet(env, 'king', JSON.stringify({ nick: nick, score: score, text: text.slice(0, 120) }));
+    }
+  }
+  return Response.json({ ok: true, id: id });
+}
+
+async function yqHug(request, env){
+  var body = await request.json();
+  var id = parseInt(body.id, 10) || 0;
+  var row = await env.DB.prepare('SELECT hugs FROM vents WHERE id=?').bind(id).first();
+  if (!row) return Response.json({ error: 'not found' }, { status: 404 });
+  var hugs = (row.hugs || 0) + 1;
+  await env.DB.prepare('UPDATE vents SET hugs=? WHERE id=?').bind(hugs, id).run();
+  var y = Math.max(0, (parseInt(await yqKvGet(env, 'yuanqi', '62'), 10) || 0) - 2);
+  await yqKvSet(env, 'yuanqi', y);
+  return Response.json({ ok: true, hugs: hugs });
+}
+
+async function yqBoost(request, env){
+  var body = await request.json();
+  var id = parseInt(body.id, 10) || 0;
+  var row = await env.DB.prepare('SELECT score,boosts,nick,text FROM vents WHERE id=?').bind(id).first();
+  if (!row) return Response.json({ error: 'not found' }, { status: 404 });
+  var boosts = (row.boosts || 0) + 1;
+  await env.DB.prepare('UPDATE vents SET boosts=? WHERE id=?').bind(boosts, id).run();
+  var lv = (row.score || 0) + boosts * 5;
+  var y = (parseInt(await yqKvGet(env, 'yuanqi', '62'), 10) || 0) + 1;
+  await yqKvSet(env, 'yuanqi', y);
+  if (lv >= 90) {
+    var kingRaw = await yqKvGet(env, 'king', null);
+    var king = kingRaw ? JSON.parse(kingRaw) : null;
+    if (!king || lv > king.score) {
+      await yqKvSet(env, 'king', JSON.stringify({ nick: row.nick, score: lv, text: String(row.text || '').slice(0, 120) }));
+    }
+  }
+  return Response.json({ ok: true, boosts: boosts, lv: lv });
+}
+
+async function yqReport(request, env){
+  var body = await request.json();
+  var id = parseInt(body.id, 10) || 0;
+  var reason = String(body.reason || '').slice(0, 200);
+  await env.DB.prepare('INSERT INTO reports(vent_id,reason,ip,created_at) VALUES(?,?,?,?)')
+    .bind(id, reason, yqIp(request), Date.now()).run();
+  return Response.json({ ok: true });
+}
+
+async function yqWeather(env){
+  var today = yqTwDate();
+  var yday = yqTwDate(Date.now() - 86400 * 1000);
+  var st = await env.DB.prepare(
+    'SELECT COUNT(*) AS n, COALESCE(SUM(score),0) AS total, COALESCE(SUM(reject),0) AS rej, COALESCE(MAX(score),0) AS peak FROM vents WHERE created_at>=? AND created_at<?'
+  ).bind(yqDayStartMs(yday), yqDayStartMs(today)).first();
+  return { date: yday, vents: st.n || 0, total: st.total || 0, rejects: st.rej || 0, peak: st.peak || 0 };
+}
+
+async function yqVoicePost(request, env){
+  var form = await request.formData();
+  var audio = form.get('audio');
+  var nick = String(form.get('nick') || 'anon').slice(0, 40);
+  if (!audio || typeof audio.arrayBuffer !== 'function') {
+    return Response.json({ error: 'no audio' }, { status: 400 });
+  }
+  var buf = await audio.arrayBuffer();
+  if (buf.byteLength > 8 * 1024 * 1024) {
+    return Response.json({ error: 'too large' }, { status: 413 });
+  }
+  var ext = (audio.name || '').toLowerCase().indexOf('.wav') >= 0 ? 'wav' : 'webm';
+  var ctype = audio.type || (ext === 'wav' ? 'audio/wav' : 'audio/webm');
+  var key = 'v/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+  await env.VOICE.put(key, buf, { httpMetadata: { contentType: ctype } });
+  var info = await env.DB.prepare(
+    "INSERT INTO vents(nick,text,score,lang,ip,voice_key,created_at) VALUES(?,'',50,'',?,?,?)"
+  ).bind(nick, yqIp(request), key, Date.now()).run();
+  var id = info.meta.last_row_id;
+  return Response.json({ ok: true, id: id, url: '/api/voice?id=' + id });
+}
+
+async function yqVoiceGet(request, env){
+  var id = new URL(request.url).searchParams.get('id');
+  var row = await env.DB.prepare('SELECT voice_key FROM vents WHERE id=?').bind(id).first();
+  if (!row || !row.voice_key) return Response.json({ error: 'not found' }, { status: 404 });
+  var obj = await env.VOICE.get(row.voice_key);
+  if (!obj) return Response.json({ error: 'not found' }, { status: 404 });
+  var ct = (obj.httpMetadata && obj.httpMetadata.contentType) || 'audio/webm';
+  return new Response(obj.body, { headers: { 'content-type': ct } });
+}
+
+async function handleApi(request, env){
+  try {
+    var url = new URL(request.url);
+    var path = url.pathname;
+    var method = request.method;
+    if (path === '/api/state' && method === 'GET') return Response.json(await yqState(env));
+    if (path === '/api/vent' && method === 'POST') return await yqVent(request, env);
+    if (path === '/api/hug' && method === 'POST') return await yqHug(request, env);
+    if (path === '/api/boost' && method === 'POST') return await yqBoost(request, env);
+    if (path === '/api/report' && method === 'POST') return await yqReport(request, env);
+    if (path === '/api/weather' && method === 'GET') return Response.json(await yqWeather(env));
+    if (path === '/api/voice' && method === 'POST') return await yqVoicePost(request, env);
+    if (path === '/api/voice' && method === 'GET') return await yqVoiceGet(request, env);
+    return Response.json({ error: 'not found' }, { status: 404 });
+  } catch (e) {
+    return Response.json({ error: 'internal' }, { status: 500 });
+  }
+}
+
+
 export default {
-  async fetch() {
+  async fetch(request, env) {
+    var url = new URL(request.url);
+    if (url.pathname.indexOf('/api/') === 0) return handleApi(request, env);
     return new Response(HTML, { headers: { 'content-type': 'text/html; charset=utf-8' } });
   }
 };
