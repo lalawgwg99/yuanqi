@@ -66,6 +66,15 @@
   .hint { font-size: 12px; margin-top: 4px; }
   /* ---- plaza ---- */
   .card { border: 2px solid var(--fg); padding: 8px; margin: 8px 0; }
+  .vcard { display: flex; gap: 10px; align-items: flex-start; }
+  .vcard .card-main { flex: 1; min-width: 0; }
+  .vcard .card-rail { display: flex; flex-direction: column; gap: 8px; align-items: center; flex: 0 0 auto; padding-top: 2px; }
+  .icon-btn { width: 46px; min-height: 46px; border: 2px solid var(--fg); background: var(--bg); color: var(--fg);
+    font-size: 20px; line-height: 1.15; cursor: pointer; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 4px 2px; filter: grayscale(1); }
+  .icon-btn .hug-count, .icon-btn .boost-count { font-size: 11px; }
+  .icon-btn:disabled { border-style: dashed; opacity: 0.45; cursor: default; }
+  .icon-btn:active:not(:disabled) { background: var(--fg); }
   .card .meta { font-size: 12px; }
   .btn-hug {
     border: 2px solid var(--fg); background: var(--bg); color: var(--fg);
@@ -1051,14 +1060,16 @@
   function effLv(d){ return d.lv + d.boosts * 5; }
   function makeCard(d){
     var card = document.createElement('div');
-    card.className = 'card';
+    card.className = 'card vcard';
     if (d.mine) card.style.borderWidth = '4px';
     var boosted = boostedIds.indexOf(d.id) >= 0;
-    card.innerHTML = '<span class="meta">' + (d.mine ? '★ ' : '') + '<b class="cname"></b> <span class="clv"></span></span>：<span class="tbody"></span> ' +
-      '<button class="btn-hug" type="button">' + t('hug') + ' <span class="hug-count">' + d.hugs + '</span></button> ' +
-      '<button class="btn-boost" type="button"' + (boosted ? ' disabled' : '') + '>' + t('boost') + ' <span class="boost-count">' + d.boosts + '</span></button> ' +
-      '<button class="btn-mini btn-report" type="button"' + (reportedIds[d.id] ? ' disabled' : '') + '>' + (reportedIds[d.id] ? t('reported') : t('report')) + '</button> ' +
-      '<span class="hint card-msg"></span>';
+    card.innerHTML = '<div class="card-main"><span class="meta">' + (d.mine ? '★ ' : '') + '<b class="cname"></b> <span class="clv"></span></span>：<span class="tbody"></span>' +
+      '<span class="hint card-msg"></span></div>' +
+      '<div class="card-rail">' +
+      '<button class="icon-btn btn-hug" type="button" title="' + t('hug') + '">🤗<span class="hug-count">' + d.hugs + '</span></button>' +
+      '<button class="icon-btn btn-boost" type="button" title="' + t('boost') + '"' + (boosted ? ' disabled' : '') + '>💪<span class="boost-count">' + d.boosts + '</span></button>' +
+      '<button class="icon-btn btn-report" type="button" title="' + (reportedIds[d.id] ? t('reported') : t('report')) + '"' + (reportedIds[d.id] ? ' disabled' : '') + '>⚑</button>' +
+      '</div>';
     card.querySelector('.cname').textContent = d.name;
     card.querySelector('.clv').textContent = effLv(d) + '/100';
     var tb = card.querySelector('.tbody');
@@ -1119,7 +1130,7 @@
         var arr = []; for (var k in reportedIds) arr.push(k);
         localStorage.setItem('yq-reported', JSON.stringify(arr));
       } catch (e) {}
-      rp.textContent = t('reported'); rp.disabled = true;
+      rp.title = t('reported'); rp.disabled = true;
       try {
         fetch('/api/report', { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id: d.id, reason: '' }) }).catch(function(){});
