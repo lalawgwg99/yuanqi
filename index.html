@@ -83,6 +83,7 @@
   }
   @keyframes stamp-in { from { transform: translate(-50%,-50%) rotate(-12deg) scale(2.4); } to { transform: translate(-50%,-50%) rotate(-12deg) scale(1); } }
   @media (prefers-reduced-motion: reduce) { .stamp { animation: none; } }
+  .demon-say { color: #d00; font-weight: bold; }
   .flash { background: var(--fg); color: var(--bg); }
   /* ---- top bar ---- */
   .top { align-items: center; flex-wrap: wrap; gap: 8px; }
@@ -245,7 +246,7 @@
     hug: '抱抱', boost: '推一把', youAre: '你是', reroll: '換一個',
     rmHint: '※ 偵測到你的裝置開了「減少動態效果」，彈幕和特效被系統關掉了。去設定關掉就能看。',
     rejected: '今日退件：', rejectUnit: ' 件正能量', stamp: '退件',
-    scoreLine: function(s, q){ return 'AI 判定：怨氣 ' + s + '/100。' + q + '（+' + s + '）'; },
+    scoreLine: function(s){ return ['本魔判定：怨氣 ' + s + '/100。', '（+' + s + '）']; },
     redline: '……咳。惡魔只吃怨氣，不吃人命。這題我不接——1925 有人 24 小時聽你說。',
     sponsor: '贊助', sponsorTitle: '贊助',
     sponsorBody: '怨氣發電廠不收你的錢——惡魔只吃怨氣，不吃新台幣。但如果你罵完覺得胸口鬆了一點，考慮把一杯飲料的錢，分給還在等家的小動物。下面的按鈕會隨機帶你去一個台灣的流浪動物之家，他們比惡魔更需要你的善意。',
@@ -266,7 +267,7 @@
     hug: 'Hug', boost: 'Boost', youAre: 'You are', reroll: 'reroll',
     rmHint: '※ Your device has "Reduce Motion" on — danmaku and effects are disabled by the system. Turn it off in settings to see them.',
     rejected: 'Rejected today: ', rejectUnit: ' positivity posts', stamp: 'REJECTED',
-    scoreLine: function(s, q){ return 'AI verdict: resentment ' + s + '/100. ' + q + ' (+' + s + ')'; },
+    scoreLine: function(s){ return ['Demon verdict: resentment ' + s + '/100. ', ' (+' + s + ')']; },
     redline: '……cough. The demon eats resentment, not lives. I can\'t take this one — please contact a local crisis helpline right now.',
     sponsor: 'Donate', sponsorTitle: 'Donate',
     sponsorBody: 'The Resentment Power Plant takes none of your money — the demon eats resentment, not cash. But if venting loosened the knot in your chest, consider giving the price of one drink to a stray animal waiting for a home. The button below takes you to a random stray-animal shelter in Taiwan. They need your kindness more than the demon does.',
@@ -287,7 +288,7 @@
     hug: 'ハグ', boost: '応援', youAre: 'あなたは', reroll: '変更',
     rmHint: '※ 端末の「モーションを減らす」がオン — 弾幕とエフェクトは無効化されています。設定でオフにすると見られます。',
     rejected: '今日の却下：', rejectUnit: ' 件のポジティブ', stamp: '却下',
-    scoreLine: function(s, q){ return 'AI判定：怨気 ' + s + '/100。' + q + '（+' + s + '）'; },
+    scoreLine: function(s){ return ['悪魔判定：怨気 ' + s + '/100。', '（+' + s + '）']; },
     redline: '……コホン。悪魔は怨気を食うが、命は食わない。この件はパスだ — つらい時は最寄りの相談窓口に連絡してくれ。',
     sponsor: '寄付', sponsorTitle: '寄付',
     sponsorBody: '怨気発電所は金を取らない — 悪魔は怨気を食い、現金は食わない。でも愚痴って胸が少し軽くなったなら、飲み物一杯分を、家を待つ野良動物に分けてやってくれ。下のボタンで台湾の動物保護団体のいずれかにランダムで飛ぶ。悪魔より彼らの方が君の優しさを必要としている。',
@@ -308,7 +309,7 @@
     hug: '허그', boost: '응원', youAre: '당신은', reroll: '변경',
     rmHint: '※ 기기의 "동작 줄이기"가 켜져 있음 — 자막과 효과가 비활성화되었습니다. 설정에서 끄면 볼 수 있어.',
     rejected: '오늘의 반려: ', rejectUnit: ' 건의 긍정', stamp: '반려',
-    scoreLine: function(s, q){ return 'AI 판정: 울분 ' + s + '/100. ' + q + ' (+' + s + ')'; },
+    scoreLine: function(s){ return ['악마 판정: 울분 ' + s + '/100. ', ' (+' + s + ')']; },
     redline: '……콜록. 악마는 울분은 먹어도 목숨은 안 먹어. 이건 패스 — 힘들면 가까운 상담 창구에 연락해.',
     sponsor: '후원', sponsorTitle: '후원',
     sponsorBody: '울분발전소는 돈을 받지 않아 — 악마는 울분을 먹지 현금은 안 먹어. 하지만 욕하고 가슴이 좀 가벼워졌다면, 음료 한 잔 값을 집을 기다리는 유기동물에게 나눠줘. 아래 버튼을 누르면 대만의 유기동물 보호단체 중 한 곳으로 랜덤 이동해. 악마보다 걔네가 네 친절을 더 필요로 해.',
@@ -480,28 +481,28 @@
   /* 惡魔品嚐：AI 自動判定怨氣分數（厚黑學惡魔廠長） */
   var QUIPS = {
   'zh-TW': [
-    function(s){ return s + ' 分？就這？你罵得不夠狠。'; },
-    function(s){ return '品嚐完畢：' + s + '/100。嗯，有內味了，本魔收下了。'; },
-    function(s){ return s + ' 分。對方這招厚黑學裡有寫，叫「拖刀計」——你輸在讀書少。'; },
-    function(s){ return s + '/100。罵得好，下次記得開大，本魔愛吃重的。'; }
+    function(s){ return '就這？你罵得不夠狠。'; },
+    function(s){ return '品嚐完畢。嗯，有內味了，本魔收下了。'; },
+    function(s){ return '對方這招厚黑學裡有寫，叫「拖刀計」——你輸在讀書少。'; },
+    function(s){ return '罵得好，下次記得開大，本魔愛吃重的。'; }
   ],
   'en': [
-    function(s){ return s + '? That\'s it? Curse harder.'; },
-    function(s){ return 'Tasted: ' + s + '/100. Mm, flavorful. The demon accepts.'; },
-    function(s){ return s + '. Your enemy pulled a textbook thick-black move: "delay and deflect". You lost for reading too little.'; },
-    function(s){ return s + '/100. Well cursed. Go bigger next time — the demon likes it heavy.'; }
+    function(s){ return 'That\'s it? Curse harder.'; },
+    function(s){ return 'Tasted. Mm, flavorful. The demon accepts.'; },
+    function(s){ return 'Your enemy pulled a textbook thick-black move: "delay and deflect". You lost for reading too little.'; },
+    function(s){ return 'Well cursed. Go bigger next time — the demon likes it heavy.'; }
   ],
   'ja': [
-    function(s){ return s + '点？それだけ？もっと罵れ。'; },
-    function(s){ return '味見完了：' + s + '/100。うむ、味がある。悪魔が受け取った。'; },
-    function(s){ return s + '点。相手の手口は厚黒学の「引き延ばし計」だ。お前は勉強不足で負けたな。'; },
-    function(s){ return s + '/100。いい罵りだ。次はもっと激しくいけ、悪魔は濃いのが好きだ。'; }
+    function(s){ return 'それだけ？もっと罵れ。'; },
+    function(s){ return '味見完了。うむ、味がある。悪魔が受け取った。'; },
+    function(s){ return '相手の手口は厚黒学の「引き延ばし計」だ。お前は勉強不足で負けたな。'; },
+    function(s){ return 'いい罵りだ。次はもっと激しくいけ、悪魔は濃いのが好きだ。'; }
   ],
   'ko': [
-    function(s){ return s + '점? 그게 다야? 더 세게 욕해.'; },
-    function(s){ return '시식 완료: ' + s + '/100. 음, 맛이 있군. 악마가 접수했다.'; },
-    function(s){ return s + '점. 상대 수법은 후흑학의 "질질끌기 전법"이야. 넌 공부가 부족해서 진 거다.'; },
-    function(s){ return s + '/100. 잘 욕했다. 다음엔 더 세게, 악마는 진한 걸 좋아해.'; }
+    function(s){ return '그게 다야? 더 세게 욕해.'; },
+    function(s){ return '시식 완료. 음, 맛이 있군. 악마가 접수했다.'; },
+    function(s){ return '상대 수법은 후흑학의 "질질끌기 전법"이야. 넌 공부가 부족해서 진 거다.'; },
+    function(s){ return '잘 욕했다. 다음엔 더 세게, 악마는 진한 걸 좋아해.'; }
   ]
   };
   function localTaste(text){
@@ -624,6 +625,16 @@
     document.body.appendChild(s);
     setTimeout(function(){ s.remove(); }, 2500);
   }
+  /* 惡魔開口：一律紅字 */
+  function demonSay(el, pre, quip, suf){
+    el.innerHTML = '';
+    el.appendChild(document.createTextNode(pre));
+    var sp = document.createElement('span');
+    sp.className = 'demon-say';
+    sp.textContent = quip;
+    el.appendChild(sp);
+    el.appendChild(document.createTextNode(suf || ''));
+  }
 
   /* 推一把：惡魔的誇獎池 */
   var PRAISE = {
@@ -691,14 +702,15 @@
       } else if (taste.reject || taste.score < 20) {
         rejected++;
         var rj = REJECTS[LANG] || REJECTS['zh-TW'];
-        dhint.textContent = rj[Math.floor(Math.random() * rj.length)];
+        demonSay(dhint, '', rj[Math.floor(Math.random() * rj.length)], '');
         showRejectStamp();
         var rl = document.getElementById('reject-line');
         rl.style.display = 'block';
         rl.textContent = t('rejected') + rejected + t('rejectUnit');
       } else {
         yuanqi += taste.score;
-        dhint.textContent = t('scoreLine')(taste.score, taste.quip);
+        var sl = t('scoreLine')(taste.score);
+        demonSay(dhint, sl[0], taste.quip, sl[1]);
         spawnDan(nick, short);
         maybeKing(taste.score, nick, short);
         mineCards.unshift({ id: 'mine-' + Date.now(), name: nick, lv: taste.score, text: text, hugs: 0, boosts: 0, mine: true });
@@ -770,7 +782,7 @@
       setTimeout(function(){ c.classList.remove('flash'); }, reduceMotion ? 0 : 180);
       yuanqi -= 2; render();
       m.textContent = t('thinking');
-      aiTaunt(d.text).then(function(x){ m.textContent = x + '（-2）'; });
+      aiTaunt(d.text).then(function(x){ demonSay(m, '', x, '（-2）'); });
     });
     bb.addEventListener('click', function(){
       if (boostedIds.indexOf(d.id) >= 0) { m.textContent = t('boosted'); return; }
@@ -782,7 +794,7 @@
       yuanqi = Math.min(100, yuanqi + 1); render();
       m.textContent = t('praising');
       var pr = PRAISE[LANG] || PRAISE['zh-TW'];
-      setTimeout(function(){ m.textContent = pr[Math.floor(Math.random() * pr.length)] + '（+5）'; }, 600);
+      setTimeout(function(){ demonSay(m, '', pr[Math.floor(Math.random() * pr.length)], '（+5）'); }, 600);
       maybeKing(effLv(d), d.name, d.text);
     });
     return card;
@@ -848,7 +860,7 @@
     burstEl.style.display = 'block';
     if (a.shake && !reduceMotion) document.body.classList.add('shake');
     if (!reduceMotion) blob.classList.add(a.cls);
-    dhint.textContent = a.line[LANG] || a.line['zh-TW'];
+    demonSay(dhint, '', a.line[LANG] || a.line['zh-TW'], '');
     setTimeout(function(){
       burstEl.style.display = 'none';
       document.body.classList.remove('shake');
