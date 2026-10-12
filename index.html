@@ -161,10 +161,12 @@
   #danmaku { position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; height: 42%; pointer-events: none; overflow: hidden; z-index: 60; }
   .dan {
     position: absolute; left: 0; white-space: nowrap;
-    border: 2px solid var(--fg); background: var(--bg); color: var(--fg);
-    font-size: 15px; padding: 3px 10px; will-change: transform;
+    color: var(--fg); font-size: 13px; opacity: 0.75; will-change: transform;
     animation-name: fly; animation-timing-function: linear; animation-fill-mode: forwards;
   }
+  .dan:hover { text-decoration: underline; opacity: 1; }
+  .dan .dn { font-size: 10px; opacity: 0.55; margin-right: 6px; }
+  .dan.mine { font-weight: bold; font-size: 15px; opacity: 1; }
   @keyframes fly { from { transform: translateX(0); } to { transform: translateX(var(--fly-to, -110vw)); } }
   #king { border-width: 4px; }
   #fx { position: fixed; inset: 0; pointer-events: none; z-index: 40; overflow: hidden; }
@@ -898,7 +900,7 @@
         yuanqi += taste.score;
         var sl = t('scoreLine')(taste.score);
         demonSay(dhint, sl[0], taste.quip, sl[1]);
-        spawnDan(nick, short);
+        spawnDan(nick, short, true);
         maybeKing(taste.score, nick, short);
         mineCards.unshift({ id: 'mine-' + Date.now(), name: nick, lv: taste.score, text: text, hugs: 0, boosts: 0, mine: true });
         renderPlaza();
@@ -1039,7 +1041,7 @@
     var url = (j && j.url) || URL.createObjectURL(wav);
     var id = (j && j.id != null) ? j.id : 'voice-' + Date.now();
     yuanqi += 50;
-    spawnDan(nick, t('voiceTag'));
+    spawnDan(nick, t('voiceTag'), true);
     maybeKing(50, nick, t('voiceTag'));
     mineCards.unshift({ id: id, name: nick, lv: 50, text: '', voice: true, url: url, hugs: 0, boosts: 0, mine: true });
     renderPlaza(); render();
@@ -1152,32 +1154,50 @@
     { name: 'cold_noodle_114', text: '已讀不回，還敢在群組貼長輩圖。' },
     { name: 'dark_cloud_007', text: '捷運上被雨傘戳到三次，對方還在滑手機。' }
   ];
-  function spawnDan(name, text){
+  function spawnDan(name, text, mine){
     if (reduceMotion) return;
     var d = document.createElement('div');
-    d.className = 'dan';
-    d.textContent = name + '：' + (text.length > 26 ? text.slice(0, 26) + '…' : text);
+    d.className = 'dan' + (mine ? ' mine' : '');
+    var dn = document.createElement('span');
+    dn.className = 'dn';
+    dn.textContent = mine ? '★ ' + name : name;
+    d.appendChild(dn);
+    d.appendChild(document.createTextNode(text.length > 26 ? text.slice(0, 26) + '…' : text));
     d.addEventListener('click', function(){
       document.getElementById('full-text').textContent = name + '：\n' + text;
       document.getElementById('full-layer').style.display = 'flex';
     });
-    d.style.top = (4 + Math.random() * 76) + '%';
+    var lane = Math.floor(Math.random() * 6);
+    d.style.top = (3 + lane * 14 + Math.random() * 5) + '%';
     var gg = colGeom();
     d.style.left = '100%';
-    d.style.animationDuration = (8 + Math.random() * 7) + 's';
+    var lv = level();
+    d.style.opacity = mine ? '1' : (0.45 + Math.random() * 0.4).toFixed(2);
+    d.style.animationDuration = ((9 - Math.min(lv, 6) * 0.9) + Math.random() * 4).toFixed(1) + 's';
     d.addEventListener('animationend', function(){ d.remove(); });
     danLayer.appendChild(d);
     var dww = d.offsetWidth || 400;
     d.style.setProperty('--fly-to', '-' + (gg.w + dww + 10) + 'px');
   }
+  /* 彈幕濃度跟怨氣值連動：越怨越密越快 */
+  function danDelay(){
+    var lv = level();
+    var base = [12000, 9000, 7000, 5500, 4000, 3000, 2500][Math.min(lv, 6)];
+    return base * (0.7 + Math.random() * 0.6);
+  }
+  function danTick(){
+    setTimeout(function(){
+      if (!document.hidden) {
+        var s = samples[Math.floor(Math.random() * samples.length)];
+        spawnDan(s.name, s.text);
+      }
+      danTick();
+    }, danDelay());
+  }
   document.getElementById('full-close').addEventListener('click', function(){
     document.getElementById('full-layer').style.display = 'none';
   });
-  setInterval(function(){
-    if (document.hidden) return;
-    var s = samples[Math.floor(Math.random() * samples.length)];
-    spawnDan(s.name, s.text);
-  }, 5000);
+  danTick();
 
   /* ---- 後端 API（失敗就當沒這回事，本地照玩） ---- */
   var weatherCache = null;
